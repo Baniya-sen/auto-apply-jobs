@@ -1,8 +1,8 @@
 import os
 import time
 import pyautogui
-import logging
-from paddleocr import PaddleOCR
+# import logging
+# from paddleocr import PaddleOCR
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -99,15 +99,15 @@ def get_additional_questions():
         print()
 
     print("Sleeping...")
-    for i in range(20):
-        print(20 - i)
+    for i in range(5):
+        print(5 - i)
         time.sleep(1)
     print("Waking...")
 
     nlp_answers = [{"4": "input"}, {"3": "input"}, {"Yes": "radio"}, {"No": "select"}]
     nlp_answers2 = [{"4": "input"}, {"2": "input"}, {"0": "input"}, {"1": "input"},
                     {"0": "input"}, {"0": "input"}, {"300000": "input"}, {"Yes": "select"}]
-    nlp_answers3 = [{"radio": "Yes"}, {"radio": "Yes"}, {"text": "4"}, {"text": "1"}, {"radio": "Yes"}]
+    nlp_answers3 = [{"radio": "Yes"}, {"radio": "No"}, {"text": "4"}, {"text": "1"}, {"radio": "Yes"}]
 
     form_filler = FillAnswers(driver, nlp_answers3, questions_list)
     form_filler.fill_answers()
@@ -123,19 +123,19 @@ driver.get("https://www.linkedin.com/jobs/view/4000150756")
 time.sleep(2)
 apply_button_click()
 
-time.sleep(2)
+# time.sleep(2)
 single_button_click_xpath(
     '/html/body/div[3]/div/div/div[2]/div/div[2]/form/footer/div[2]/button',
     2
 )
 
-time.sleep(2)
+# time.sleep(2)
 single_button_click_xpath(
     '/html/body/div[3]/div/div/div[2]/div/div[2]/form/footer/div[2]/button[2]',
     2
 )
 
-time.sleep(5)
+# time.sleep(5)
 # single_button_click_xpath(
 #     '/html/body/div[3]/div/div/div[2]/div/div[2]/form/footer/div[2]/button[2]',
 #     2
@@ -149,5 +149,9 @@ time.sleep(5)
 # )
 
 get_additional_questions()
+time.sleep(5)
 
 driver.quit()
+
+# driver.get("https://www.linkedin.com/")
+# input("Enter..")

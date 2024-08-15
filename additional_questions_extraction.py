@@ -23,7 +23,11 @@ class ExtractQuestionsAndInputs:
         self.options = []
         if section.find('fieldset', {'data-test-form-builder-radio-button-form-component': True}):
             self.options = [opt.get_text(strip=True) for opt in section.find_all('label')]
-            question_text_extracted = section.find('legend').get_text(strip=True)
+            question_text_extracted = ""
+
+            legend = section.find('legend')
+            if legend:
+                question_text_extracted = legend.get_text(strip=True)
 
         elif section.find('select', {'data-test-text-entity-list-form-select': True}):
             self.options = [opt.get_text(strip=True)
@@ -33,8 +37,16 @@ class ExtractQuestionsAndInputs:
                 'label', {'data-test-text-entity-list-form-title': True}
             ).get_text(strip=True)
 
+        elif section.find('fieldset', {'data-test-checkbox-form-component': True}):
+            self.options = [opt.get_text(strip=True) for opt in section.find_all('label')]
+            question_text_extracted = section.find('legend').get_text(strip=True)
+
         else:
-            question_text_extracted = section.find('label').get_text(strip=True)
+            question_text_extracted = ""
+
+            label = section.find('label')
+            if label:
+                question_text_extracted = label.get_text(strip=True)
 
         return question_text_extracted, self.options
 
@@ -45,6 +57,8 @@ class ExtractQuestionsAndInputs:
             self.input_tag_type = 'radio'
         elif section.find('select', {'data-test-text-entity-list-form-select': True}):
             self.input_tag_type = 'select'
+        elif section.find('fieldset', {'data-test-checkbox-form-component': True}):
+            self.input_tag_type = 'checkbox'
         else:
             self.input_tag_type = ''
 

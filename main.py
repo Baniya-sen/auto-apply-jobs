@@ -6,7 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 from additional_questions_extraction import ExtractQuestionsAndInputs
 from answer_form_filler import FillAnswers
@@ -108,56 +108,68 @@ def next_button_click():
 
 
 def get_prompt_reference():
-    try:
-        info_text_xpath = '/html/body/div[3]/div/div/div[2]/div/div[2]/form/div/div/h3'
-        info_text = WebDriverWait(driver, 2).until(
-            ec.presence_of_element_located((By.XPATH, info_text_xpath))
-        ).text
+    info_text = ""
+    info_text_xpath = ['/html/body/div[3]/div/div/div[2]/div/div[2]/form/div/div/h3',
+                       '/html/body/div[3]/div/div/div[2]/div/div[2]/form/div[1]/h3/span']
 
-        if info_text in {"Contact info", "Resume", "Education"}:
-            return False
-        elif info_text == "Work experience":
-            work_exp_cancel_button_xpath = (
-                '/html/body/div[3]/div/div/div[2]/div/'
-                'div[2]/form/div[1]/div/div[2]/button[1]'
-            )
-            single_button_click_xpath(work_exp_cancel_button_xpath, 1)
-            return False
-        else:
-            print(f"\nDifferent prompt: {info_text}")
-            return True
+    for xpath in info_text_xpath:
+        try:
+            info_text = WebDriverWait(driver, 1).until(
+                ec.presence_of_element_located((By.XPATH, xpath))
+            ).text
+        except TimeoutException:
+            print("No prompt found!", TimeoutException)
+            continue
 
-    except TimeoutException:
-        print("No prompt found!", TimeoutException)
+    if info_text in {"Contact info", "Resume", "Education"}:
+        return False
+    elif info_text == "Work experience":
+        work_exp_cancel_button_xpath = (
+            '/html/body/div[3]/div/div/div[2]/div/'
+            'div[2]/form/div[1]/div/div[2]/button[1]'
+        )
+        single_button_click_xpath(work_exp_cancel_button_xpath, 1)
+        return False
+    else:
+        print(f"\nDifferent prompt: {info_text}")
         return True
 
 
 def get_additional_questions():
-    questions_form_div = driver.find_element(
-        By.XPATH,
-        '/html/body/div[3]/div/div/div[2]/div/div[2]/form/div/div[@class="pb4"]'
-    )
-    questions_html_content = questions_form_div.get_attribute('outerHTML')
+    try:
+        questions_form_div = driver.find_element(
+            By.XPATH,
+            '/html/body/div[3]/div/div/div[2]/div/div[2]/form/div/div[@class="pb4"]'
+        )
+        questions_html_content = questions_form_div.get_attribute('outerHTML')
 
-    extractor = ExtractQuestionsAndInputs(questions_html_content)
-    questions_list = extractor.extract_questions()
+        extractor = ExtractQuestionsAndInputs(questions_html_content)
+        questions_list = extractor.extract_questions()
 
-    for ques in questions_list:
-        for k, v in ques.items():
-            print(f"{k}: {v}")
-        print()
+        for ques in questions_list:
+            for k, v in ques.items():
+                print(f"{k}: {v}")
+            print()
 
-    print("Sleeping...")
-    for i in range(20):
-        print(20 - i)
-        time.sleep(1)
-    print("Waking...")
+        print("Sleeping...")
+        for i in range(30):
+            print(30 - i)
+            time.sleep(1)
+        print("Waking...")
 
-    nlp_answers = [{"4": "input"}, {"3": "input"}, {"Yes": "radio"}, {"No": "select"}]
-    nlp_answers2 = [{"4": "input"}, {"2": "input"}, {"0": "input"}, {"1": "input"},
-                    {"0": "input"}, {"0": "input"}, {"300000": "input"}, {"Yes": "select"}]
+        return questions_list
 
-    form_filler = FillAnswers(driver, nlp_answers, questions_list)
+    except NoSuchElementException:
+        print(NoSuchElementException)
+
+
+def fill_out_answers(form_questions):
+    with open("answers.txt", 'r') as file:
+        raw_answers_text = file.readlines()
+        nlp_answers = [{line.split(maxsplit=1)[0]: line.split(maxsplit=1)[1].strip()}
+                       for line in raw_answers_text if line.strip()]
+
+    form_filler = FillAnswers(driver, form_questions, nlp_answers)
     form_filler.fill_answers()
 
 
@@ -232,19 +244,12 @@ for li in get_all_job_postings():
         else:
             while True:
                 if get_prompt_reference():
-                    get_additional_questions()
-                    # print("Sleeping...")
-                    # for i in range(20):
-                    #     print(20 - i)
-                    #     time.sleep(1)
-                    # print("Waking...")
-                    break
+                    fill_out_answers(get_additional_questions())
 
-                else:
-                    single_button_click_xpath(
-                        '/html/body/div[3]/div/div/div[2]/div/'
-                        'div[2]/form/footer/div[2]/button[2]'
-                    )
+                single_button_click_xpath(
+                    '/html/body/div[3]/div/div/div[2]/div/'
+                    'div[2]/form/footer/div[2]/button[2]'
+                )
 
                 if submit_additional_apply(): break
 

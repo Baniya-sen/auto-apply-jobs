@@ -9,7 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 
 from additional_questions_extraction import ExtractQuestionsAndInputs
-from additional_questions_form_filler import FormFiller
+from answer_form_filler import FillAnswers
 
 PROFILE_PATH = os.path.abspath("selenium_profile")
 if not os.path.exists(PROFILE_PATH):
@@ -147,12 +147,18 @@ def get_additional_questions():
             print(f"{k}: {v}")
         print()
 
+    print("Sleeping...")
+    for i in range(20):
+        print(20 - i)
+        time.sleep(1)
+    print("Waking...")
+
     nlp_answers = [{"4": "input"}, {"3": "input"}, {"Yes": "radio"}, {"No": "select"}]
     nlp_answers2 = [{"4": "input"}, {"2": "input"}, {"0": "input"}, {"1": "input"},
                     {"0": "input"}, {"0": "input"}, {"300000": "input"}, {"Yes": "select"}]
 
-    form_filler = FormFiller(driver, questions_html_content, nlp_answers)
-    form_filler.fill_form()
+    form_filler = FillAnswers(driver, nlp_answers, questions_list)
+    form_filler.fill_answers()
 
 
 def submit_additional_apply():
@@ -226,12 +232,12 @@ for li in get_all_job_postings():
         else:
             while True:
                 if get_prompt_reference():
+                    get_additional_questions()
                     # print("Sleeping...")
-                    # for i in range(60):
-                    #     print(60 - i)
+                    # for i in range(20):
+                    #     print(20 - i)
                     #     time.sleep(1)
                     # print("Waking...")
-                    get_additional_questions()
                     break
 
                 else:

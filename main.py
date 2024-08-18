@@ -8,12 +8,15 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
-from additional_questions_extraction import ExtractQuestionsAndInputs
+from questions_extraction import ExtractQuestionsAndInputs
+from transformer_NLP import QuestionAnsweringModel
 from answer_form_filler import FillAnswers
 
 PROFILE_PATH = os.path.abspath("selenium_profile")
 if not os.path.exists(PROFILE_PATH):
     os.makedirs(PROFILE_PATH)
+
+QA_MODEL = QuestionAnsweringModel()
 
 
 def single_button_click_xpath(xpath, timeout=5):
@@ -30,8 +33,10 @@ def get_all_job_postings():
     time.sleep(2)
 
     show_more_jobs_button_xpath = [
+        '//html/body//span[text()="Show all"]',
         '/html/body/div[4]/div[3]/div/div[3]/div/div/main/'
         'div/div[1]/div[1]/div/div/div/section/div[2]/a/span',
+        '/html/body/div[5]/div[3]/div/div[3]/div/div/main/div/div[1]/div[2]/div/div/div/section/div[2]/a/span'
         '/html/body/div[5]/div[3]/div/div[3]/div/div/main/'
         'div/div[1]/div[1]/div/div/div/section/div[2]/a'
     ]
@@ -121,6 +126,8 @@ def get_prompt_reference():
             print("No prompt found!", TimeoutException)
             continue
 
+    print(info_text)
+
     if info_text in {"Contact info", "Resume", "Education"}:
         return False
     elif info_text == "Work experience":
@@ -146,16 +153,8 @@ def get_additional_questions():
         extractor = ExtractQuestionsAndInputs(questions_html_content)
         questions_list = extractor.extract_questions()
 
-        for ques in questions_list:
-            for k, v in ques.items():
-                print(f"{k}: {v}")
-            print()
-
-        print("Sleeping...")
-        for i in range(30):
-            print(30 - i)
-            time.sleep(1)
-        print("Waking...")
+        for tag in questions_list:
+            print(f'{tag["question"]}: {tag["type"]}: {tag["options"]}')
 
         return questions_list
 
@@ -164,10 +163,16 @@ def get_additional_questions():
 
 
 def fill_out_answers(form_questions):
-    with open("answers.txt", 'r') as file:
-        raw_answers_text = file.readlines()
-        nlp_answers = [{line.split(maxsplit=1)[0]: line.split(maxsplit=1)[1].strip()}
-                       for line in raw_answers_text if line.strip()]
+    nlp_answers = []
+
+    for tag in form_questions:
+        answer = QA_MODEL.ask_question(tag["question"])
+        nlp_answers.append({tag["type"]: answer})
+        print(f'{tag["type"]}: {answer}')
+
+    for i in range(10):
+        print(10 - i)
+        time.sleep(1)
 
     form_filler = FillAnswers(driver, form_questions, nlp_answers)
     form_filler.fill_answers()
@@ -181,7 +186,8 @@ def submit_additional_apply():
         '/html/body/div[3]/div/div/div[2]/div/div[2]/div/footer/div[2]/'
         'button[2][@aria-label="Submit application"]',
         '/html/body/div[3]/div/div/div[3]/button/span[text()="Done"]',
-        '/html/body/div[3]/div/div/div[3]/button'
+        '/html/body/div[3]/div/div/div[3]/button',
+        '/html/body/div[3]/div/div/button/svg'
     ]
 
     for xpath in submit_button_paths:

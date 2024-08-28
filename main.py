@@ -1,271 +1,62 @@
-import os
-import time
+from os import path, makedirs, listdir
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as ec
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
-from questions_extraction import ExtractQuestionsAndInputs
-from transformer_NLP import QuestionAnsweringModel
-from answer_form_filler import FillAnswers
+from transformer import QAModelCustom
+from model import QuestionAnsweringModel
+from linkedin import LinkedInApply
 
-PROFILE_PATH = os.path.abspath("selenium_profile")
-if not os.path.exists(PROFILE_PATH):
-    os.makedirs(PROFILE_PATH)
+from config import PROFILE_PATH, FINE_TUNED_MODEL_PATH
 
-QA_MODEL = QuestionAnsweringModel()
+# False both if you don't want to train the model
+MODEL_TRAINING, USE_FT_MODEL = True, True
 
 
-def single_button_click_xpath(xpath, timeout=5):
-    try:
-        WebDriverWait(driver, timeout).until(ec.element_to_be_clickable(
-            (By.XPATH, xpath)
-        )).click()
+def prerequisites():
+    global MODEL_TRAINING, USE_FT_MODEL
 
-    except TimeoutException:
-        print(TimeoutException)
+    if not path.exists(PROFILE_PATH):
+        makedirs(PROFILE_PATH)
 
-
-def get_all_job_postings():
-    time.sleep(2)
-
-    show_more_jobs_button_xpath = [
-        '//html/body//span[text()="Show all"]',
-        '/html/body/div[4]/div[3]/div/div[3]/div/div/main/'
-        'div/div[1]/div[1]/div/div/div/section/div[2]/a/span',
-        '/html/body/div[5]/div[3]/div/div[3]/div/div/main/div/div[1]/div[2]/div/div/div/section/div[2]/a/span'
-        '/html/body/div[5]/div[3]/div/div[3]/div/div/main/'
-        'div/div[1]/div[1]/div/div/div/section/div[2]/a'
-    ]
-    for xpath in show_more_jobs_button_xpath:
-        single_button_click_xpath(xpath, 2)
-
-    time.sleep(2)
-    ul_element = WebDriverWait(driver, 5).until(
-        ec.presence_of_element_located(
-            (By.XPATH, '//*[@id="main"]/div/div[2]/div[1]/div/ul')
-        )
-    )
-    return ul_element.find_elements(By.XPATH, "./li")
-
-
-def apply_button_click():
-    job_description_tab = WebDriverWait(driver, 5).until(
-        ec.presence_of_element_located(
-            (By.CLASS_NAME, 'scaffold-layout__detail')
-        ))
-    apply_button = WebDriverWait(job_description_tab, 5).until(
-        ec.element_to_be_clickable(
-            (By.CLASS_NAME, 'jobs-apply-button--top-card')
-        ))
-    apply_button.click()
-
-    try:
-        WebDriverWait(driver, 1).until(ec.presence_of_element_located(
-            (By.XPATH,
-             '/html/body/div[3]/div/div/div[1]/h2'
-             '[@id="header" and text()="Job search safety reminder"]')
-        ))
-        single_button_click_xpath(
-            '/html/body/div[3]/div/div/div[3]/div/div/button',
-            1)
-    except TimeoutException:
-        print(f"No Suspicious header found -", TimeoutException)
-
-
-def next_button_click():
-    WebDriverWait(driver, 6).until(ec.presence_of_element_located(
-        (By.XPATH,
-         '/html/body/div[3]/div/div/div[1]/h2[@id="jobs-apply-header"]')
-    ))
-
-    next_button_object = None
-    is_apply_button_visible = False
-
-    # List of XPaths to try
-    next_button_paths = [
-        '/html/body/div[3]/div/div/div[2]/div/div[2]/form/footer/div[2]/button',
-        '/html/body/div[3]/div/div/div[2]/div/div/form/footer/div[2]/button',
-        '/html/body/div[3]/div/div/div[2]/div/div/form/footer/div[3]/button',
-        '/html/body/div[3]/div/div/div[2]/div/div/form/footer/div[3]/button/span'
-    ]
-
-    for xpath in next_button_paths:
-        try:
-            next_button_object = WebDriverWait(driver, 1).until(
-                ec.element_to_be_clickable((By.XPATH, xpath))
-            )
-            is_apply_button_visible = True
-            break
-        except TimeoutException:
-            print(f'TOE - {TimeoutException}')
-            continue
-
-    if is_apply_button_visible:
-        next_button_object_text = next_button_object.text
-        next_button_object.click()
-        return next_button_object_text
+    if path.exists(FINE_TUNED_MODEL_PATH):
+        if len(listdir(FINE_TUNED_MODEL_PATH)) >= 6:
+            MODEL_TRAINING = False
     else:
-        raise TimeoutException
+        USE_FT_MODEL = False
+
+    if MODEL_TRAINING:
+        print("Training the model on given Dataset!")
+        model_training = QAModelCustom()
+        model_training.train_model(num_train_epochs=35)
+        model_training.save_model(save_path=FINE_TUNED_MODEL_PATH)
+        print("Model trained and saved.")
 
 
-def get_prompt_reference():
-    info_text = ""
-    info_text_xpath = ['/html/body/div[3]/div/div/div[2]/div/div[2]/form/div/div/h3',
-                       '/html/body/div[3]/div/div/div[2]/div/div[2]/form/div[1]/h3/span']
+def main():
+    prerequisites()
 
-    for xpath in info_text_xpath:
-        try:
-            info_text = WebDriverWait(driver, 1).until(
-                ec.presence_of_element_located((By.XPATH, xpath))
-            ).text
-        except TimeoutException:
-            print("No prompt found!", TimeoutException)
-            continue
+    chrome_options = Options()
+    chrome_options.add_argument(f"user-data-dir={PROFILE_PATH}")
+    web_driver = webdriver.Chrome(options=chrome_options)
+    web_driver.maximize_window()
 
-    print(info_text)
+    qa_model = QuestionAnsweringModel(USE_FT_MODEL)
 
-    if info_text in {"Contact info", "Resume", "Education"}:
-        return False
-    elif info_text == "Work experience":
-        work_exp_cancel_button_xpath = (
-            '/html/body/div[3]/div/div/div[2]/div/'
-            'div[2]/form/div[1]/div/div[2]/button[1]'
-        )
-        single_button_click_xpath(work_exp_cancel_button_xpath, 1)
-        return False
-    else:
-        print(f"\nDifferent prompt: {info_text}")
-        return True
-
-
-def get_additional_questions():
     try:
-        questions_form_div = driver.find_element(
-            By.XPATH,
-            '/html/body/div[3]/div/div/div[2]/div/div[2]/form/div/div[@class="pb4"]'
-        )
-        questions_html_content = questions_form_div.get_attribute('outerHTML')
+        linkedin_apply = LinkedInApply(driver=web_driver, model=qa_model)
+        linkedin_apply.apply_to_jobs()
 
-        extractor = ExtractQuestionsAndInputs(questions_html_content)
-        questions_list = extractor.extract_questions()
+        # linkedin_single_apply = LinkedInApply(
+        #     web_driver,
+        #     qa_model,
+        #     "https://www.linkedin.com/jobs/view/3994877775"
+        # )
+        # linkedin_single_apply.easy_apply()
 
-        for tag in questions_list:
-            print(f'{tag["question"]}: {tag["type"]}: {tag["options"]}')
-
-        return questions_list
-
-    except NoSuchElementException:
-        print(NoSuchElementException)
+    finally:
+        web_driver.quit()
 
 
-def fill_out_answers(form_questions):
-    nlp_answers = []
-
-    for tag in form_questions:
-        answer = QA_MODEL.ask_question(tag["question"])
-        nlp_answers.append({tag["type"]: answer})
-        print(f'{tag["type"]}: {answer}')
-
-    for i in range(10):
-        print(10 - i)
-        time.sleep(1)
-
-    form_filler = FillAnswers(driver, form_questions, nlp_answers)
-    form_filler.fill_answers()
-
-
-def submit_additional_apply():
-    submit_button_object = False
-    submit_button_paths = [
-        '/html/body/div[3]/div/div/div[2]/div/div[2]/div/footer/div[3]/'
-        'button[2][@aria-label="Submit application"]',
-        '/html/body/div[3]/div/div/div[2]/div/div[2]/div/footer/div[2]/'
-        'button[2][@aria-label="Submit application"]',
-        '/html/body/div[3]/div/div/div[3]/button/span[text()="Done"]',
-        '/html/body/div[3]/div/div/div[3]/button',
-        '/html/body/div[3]/div/div/button/svg'
-    ]
-
-    for xpath in submit_button_paths:
-        try:
-            submit_button = WebDriverWait(driver, 1).until(
-                ec.element_to_be_clickable((By.XPATH, xpath))
-            )
-            driver.execute_script(
-                "arguments[0].scrollIntoView(true);",
-                submit_button
-            )
-            submit_button.click()
-            submit_button_object = True
-        except TimeoutException:
-            print(f'TOE - {TimeoutException}')
-            print("This path not worked-", xpath)
-            continue
-
-    if submit_button_object:
-        print("Application submitted successfully after filling form.", end="\n\n")
-        return True
-
-
-def close_apply_dialog():
-    close_button_paths = [
-        '/html/body/div[3]/div/div/button',
-        '/html/body/div[3]/div[2]/div/div[3]/button[1]'
-    ]
-
-    for xpath in close_button_paths:
-        single_button_click_xpath(xpath, 1)
-
-    print("Application disposed!", end="\n\n")
-
-
-chrome_options = Options()
-chrome_options.add_argument(f"user-data-dir={PROFILE_PATH}")
-driver = webdriver.Chrome(options=chrome_options)
-driver.maximize_window()
-driver.get("https://www.linkedin.com/jobs/")
-
-for li in get_all_job_postings():
-    # Scroll the <li> into view and wait for element to visible
-    driver.execute_script("arguments[0].scrollIntoView(true);", li)
-    WebDriverWait(driver, 2).until(ec.visibility_of(li))
-
-    job_name = " ".join(li.text.split()[0:2])
-    print(f"JOB - {job_name}!")
-    li.click()
-
-    if "Easy Apply" in li.text:
-        apply_button_click()
-        time.sleep(1)
-
-        if next_button_click() == "Submit application":
-            time.sleep(2)
-            single_button_click_xpath('/html/body/div[3]/div/div/button')
-            print(f"Applied for the job '{job_name}'!", end="\n\n")
-
-        else:
-            while True:
-                if get_prompt_reference():
-                    fill_out_answers(get_additional_questions())
-
-                single_button_click_xpath(
-                    '/html/body/div[3]/div/div/div[2]/div/'
-                    'div[2]/form/footer/div[2]/button[2]'
-                )
-
-                if submit_additional_apply(): break
-
-input("Press Enter to close the browser...")
-
-'/html/body/div[3]/div/div/div[2]/div/div[2]/div/div/h3'  "-- Review your application"
-
-'/html/body/div[3]/div/div/div[1]/h2'  "--Job search safety reminder"
-'/html/body/div[3]/div/div/div[3]/div/div/button'  "--Continue applying"
-'/html/body/div[3]/div/div/button'  "--dismiss cross"
-
-"/html/body/div[3]/div/div/div[2]/div/div[2]/form/div/div/div/div/fieldset/div/input"  "-- terms agree input checkbox"
-"//input[@type='checkbox' and contains(@data-test-text-selectable-option__input, 'I Agree Terms & Conditions')]" "--chatgpt xpath for above"
+if __name__ == "__main__":
+    main()

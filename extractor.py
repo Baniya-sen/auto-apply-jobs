@@ -13,6 +13,7 @@ def clean_text(text):
 
 class ExtractQuestionsAndInputs:
     def __init__(self, html_content):
+        """Extract questions, questions type, and its options if available, given HTML content"""
         self.html_content = html_content
         self.soup = BeautifulSoup(html_content, 'html.parser')
         self.questions = []
@@ -20,12 +21,14 @@ class ExtractQuestionsAndInputs:
         self.input_tag_type = ''
 
     def parse_and_extract(self):
+        """Find and extract job related class elements"""
         for section in self.soup.find_all('div', class_='jobs-easy-apply-form-section__grouping'):
             ques_text, options = self.get_options(section)
             input_type = self.get_input_type(section)
             self.questions.append({'question': ques_text, 'input_type': input_type, 'options': options})
 
     def get_options(self, section):
+        """Extracts job questions, and options if available"""
         self.options = []
         if section.find('fieldset', {'data-test-form-builder-radio-button-form-component': True}):
             self.options = [opt.get_text(strip=True) for opt in section.find_all('label')]
@@ -57,6 +60,7 @@ class ExtractQuestionsAndInputs:
         return question_text_extracted, self.options
 
     def get_input_type(self, section):
+        """Extracts questions input field type"""
         if section.find('div', {'data-test-single-line-text-form-component': True}):
             self.input_tag_type = 'text'
         elif section.find('fieldset', {'data-test-form-builder-radio-button-form-component': True}):
@@ -71,6 +75,7 @@ class ExtractQuestionsAndInputs:
         return self.input_tag_type
 
     def format_output(self):
+        """Formats the question in list of dictionaries"""
         return [
             {
                 'idx': idx,
@@ -88,5 +93,6 @@ class ExtractQuestionsAndInputs:
         ]
 
     def extract_questions(self):
+        """Function to call to start extracting and generate output"""
         self.parse_and_extract()
         return self.format_output()

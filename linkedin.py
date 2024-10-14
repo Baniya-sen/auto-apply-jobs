@@ -68,6 +68,16 @@ class LinkedInApply:
         if "Easy Apply" in job_description:
             self.apply_button_click()
 
+            job_apply_dialog = self.driver.find_element(
+                By.XPATH,
+                '//div[@role="dialog" and @aria-labelledby="jobs-apply-header"'
+                ' and contains(@class, "artdeco-modal")]'
+            )
+            button_element = job_apply_dialog.find_element(
+                By.CSS_SELECTOR,
+                'button.artdeco-button.artdeco-button--2.artdeco-button--primary'
+            )
+
             if self.next_button_click() == "Submit application":
                 self.single_button_click_xpath('/html/body/div[3]/div/div/button', 2)
                 print(f"Successfully applied for: {self.job_info[0]}, at {self.job_info[1]}!\n")

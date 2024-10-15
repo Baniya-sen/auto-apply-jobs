@@ -1,11 +1,22 @@
 from os import path
 
+# Default paths
 PROFILE_PATH = path.abspath("selenium_profile")
 FINE_TUNED_MODEL_PATH = path.abspath("fine_tuned_model")
 
+# Default answers to basic questions
+DEFAULT_ANSWERS = {
+    "First name": "Bhanu",
+    "Last name": "Pratap",
+    "Email address": "bhanugupta421.bg@gmail.com",
+    "Phone country code": "India (+91)",
+    "Mobile phone number": 9873173896,
+    "Location (city)": "Faridabad, Haryana, India",
+    "City": "Faridabad, Haryana, India",
+    "Address": "Faridabad, Haryana, India",
+}
 
 # These are the context passage, training questions, and answers for model to train from
-
 SUMMARY_TEXT = """SUMMARY: I have 0 years of work experience in anything I did not mentioned here. If I don't mention 
 something it means I have No work experience in it. I have 0 years of work experience with in anything any tool any 
 tech any language everything that I didn't mentioned. I am having 0 years of work experience with in anything. No I 

@@ -22,7 +22,6 @@ class FillAnswers:
             ques_text_match_len = min(int(len(question_text) * 0.60), 50)
 
             try:
-
                 if input_type == 'text':
                     input_element = self.driver.find_element(
                         By.XPATH, f"//label[contains(normalize-space(text()), '"
@@ -30,7 +29,7 @@ class FillAnswers:
                     input_element.clear()
                     input_element.send_keys(answer['text'])
 
-                elif input_type == 'radio':
+                if input_type == 'radio':
                     right_option = answer['radio']
                     if right_option not in question['options']:
                         right_option = choice(question['options'])
@@ -52,7 +51,6 @@ class FillAnswers:
                     select_element = self.driver.find_element(By.XPATH, select_xpath)
                     select_object = Select(select_element)
                     select_object.select_by_visible_text(right_option)
-                    print(f"'{right_option}'")
 
                 elif input_type == 'checkbox':
                     checkbox_xpath = (f"//legend[starts-with(normalize-space(), '"

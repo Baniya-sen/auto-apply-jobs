@@ -50,7 +50,7 @@ def main():
         # linkedin_single_apply = LinkedInApply(
         #     web_driver,
         #     qa_model,
-        #     "https://www.linkedin.com/jobs/view/3994877775"
+        #     "https://www.linkedin.com/jobs/view/4043020144"
         # )
         # linkedin_single_apply.easy_apply()
 

@@ -7,6 +7,7 @@ def clean_text(text):
     text = re.sub(r'\s*required\b', '', text, flags=re.IGNORECASE)
     text = re.sub(r'(\b[\w\s]+\b)\s*\1+', r'\1', text)
     text = re.sub(r'\b(\w+)\b\s*\?\s*.*\?\s*$', r'\1?', text)
+    text = re.sub(r'(?<!\S)(.+?)(?:(?!\S)\s*|\s*)(\1)(?!\S)', r'\1', text)
     text = ' '.join(text.split())
     return text.strip()
 
@@ -96,3 +97,7 @@ class ExtractQuestionsAndInputs:
         """Function to call to start extracting and generate output"""
         self.parse_and_extract()
         return self.format_output()
+
+
+# if __name__ == "__main__":
+#     print(clean_text("Email address enter pleaseE"))

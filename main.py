@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from transformer import QAModelCustom
 from model import QuestionAnsweringModel
 from linkedin import LinkedInApply
+from naukridotcom import NaukriDotComApply
 
 from config import PROFILE_PATH, FINE_TUNED_MODEL_PATH
 
@@ -50,9 +51,12 @@ def main():
         # linkedin_single_apply = LinkedInApply(
         #     web_driver,
         #     qa_model,
-        #     "https://www.linkedin.com/jobs/view/4043020144"
+        #     "https://www.linkedin.com/jobs/view/3994877775"
         # )
         # linkedin_single_apply.easy_apply()
+
+        naukri_apply = NaukriDotComApply(driver=web_driver, model=qa_model)
+        # naukri_apply.apply_to_jobs()
 
     finally:
         web_driver.quit()

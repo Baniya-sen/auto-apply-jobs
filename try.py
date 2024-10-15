@@ -72,35 +72,44 @@ def close_submit_dialog_box() -> None:
             continue
 
 
-def get_prompt_reference(apply_box_dialog) -> bool:
+def get_prompt_reference(apply_box) -> bool:
     """Extracts text from form headline to identify if the form requires
        additional questions to fill, or it is basic requirements"""
     info_text = ""
     prompts_paths = ['h3.t-16.t-bold', 'h3.t-16.mb2']
 
+    apply_dialog_box = WebDriverWait(driver, 5).until(
+        ec.presence_of_element_located(
+            (By.XPATH,
+             '//div[@role="dialog" and @aria-labelledby="jobs-apply-header"'
+             ' and contains(@class, "artdeco-modal")]')
+        ))
+
     for xpath in prompts_paths:
         try:
-            info_text = WebDriverWait(apply_box_dialog, 1).until(
+            info_text = WebDriverWait(apply_box, 1).until(
                 ec.presence_of_element_located(
                     (By.CSS_SELECTOR, xpath)
                 )).text
+            print(info_text)
             break
         except TimeoutException:
-            print("No prompt found!")
+            pass
 
     if info_text in {"Resume", "Education"}:
         return False
     elif info_text == "Work experience":
-        work_exp_cancel_xpath = (
-            '/html/body/div[3]/div/div/div[2]/div/'
-            'div[2]/form/div[1]/div/div[2]/button[1]'
-        )
-        return not single_button_click_xpath(work_exp_cancel_xpath, 1)
+        # work_exp_cancel_xpath = (
+        #     '/html/body/div[3]/div/div/div[2]/div/'
+        #     'div[2]/form/div[1]/div/div[2]/button[1]'
+        # )
+        # return not single_button_click_xpath(work_exp_cancel_xpath, 1)
 
-        # apply_box_dialog.find_element(
-        #     By.XPATH,
-        #     "//button[contains(@class, 'artdeco-button')]//*[contains(text(), 'Cancel')]"
-        # ).click()
+        apply_dialog_box.find_element(
+            By.XPATH,
+            "//button[contains(@class, 'artdeco-button')"
+            " and contains(., 'Cancel')]"
+        ).click()
     else:
         print(f"\nReference prompt: {info_text}")
         return True
@@ -123,6 +132,8 @@ driver.get("https://www.linkedin.com/jobs/view/4047813601")
 # all_li_elements[0].click()
 
 apply_button_click()
+
+time.sleep(5)
 
 job_apply_dialog = driver.find_element(
     By.XPATH,

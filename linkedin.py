@@ -166,7 +166,7 @@ class LinkedInApply:
                     )).text
                 break
             except TimeoutException:
-                print("No prompt found!")
+                pass
 
         if info_text in {"Resume", "Education"}:
             return False
@@ -175,12 +175,13 @@ class LinkedInApply:
                 '/html/body/div[3]/div/div/div[2]/div/'
                 'div[2]/form/div[1]/div/div[2]/button[1]'
             )
-            return not self.single_button_click_xpath(work_exp_cancel_xpath, 1)
-
-            # apply_box_dialog.find_element(
-            #     By.XPATH,
-            #     "//button[contains(@class, 'artdeco-button')]//*[contains(text(), 'Cancel')]"
-            # ).click()
+            if not self.single_button_click_xpath(work_exp_cancel_xpath, 1):
+                apply_box_dialog.find_element(
+                    By.XPATH,
+                    "//button[contains(@class, 'artdeco-button')"
+                    " and contains(., 'Cancel')]"
+                ).click()
+                return False
         else:
             print(f"\nReference prompt: {info_text}")
             return True

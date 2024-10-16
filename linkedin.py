@@ -32,7 +32,8 @@ class LinkedInApply:
         """Continue applying for jobs till target is hit."""
         while JOB_APPLY_TARGET != self.jobs_applied:
             self.driver.get(self.link)
-            self.is_user_logged_in()
+            if self.driver.current_url != self.link:
+                self.is_user_logged_in()
 
             for job in self.get_all_job_postings():
                 self.driver.execute_script("arguments[0].scrollIntoView(true);", job)
@@ -51,21 +52,28 @@ class LinkedInApply:
                     self.jobs_traversed += 1
 
     def is_user_logged_in(self):
-        time.sleep(30)
+        logged_in = True
+        opened_link = self.driver.current_url
 
-        """<form class="join-form" action="/signup/api/cors/createAccount" method="post">
-        
-      <h1 class="authwall-join-form__title">Join LinkedIn</h1>
-<!---->    """
+        if "authwall" in opened_link or "login" in opened_link:
+            logged_in = False
+        else:
+            try:
+                WebDriverWait(self.driver, 1).until(
+                    ec.presence_of_element_located((By.XPATH, "//a[contains(., 'Join now')]"))
+                )
+                logged_in = False
+            except TimeoutException:
+                pass
 
-        """<button class="authwall-join-form__form-toggle--bottom form-toggle" data-tracking-control-name="auth_wall_desktop_jserp-login-toggle" data-tracking-client-ingraph=""> Sign in </button>"""
-
-        try:
-            self.driver.find_element("login_field")
-
-            return True
-        except NoSuchElementException:
-            return False
+        while not logged_in:
+            page_state = self.driver.execute_script('return document.readyState;')
+            if page_state == 'complete':
+                if (self.link in self.driver.current_url
+                        or "https://www.linkedin.com/feed" in self.driver.current_url):
+                    print("SUCCESS: You are now logged-in.")
+                    self.driver.get(self.link)
+                    break
 
     def get_all_job_postings(self):
         """Extract all jobs posting from UL element"""

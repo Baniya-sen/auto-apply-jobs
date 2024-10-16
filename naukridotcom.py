@@ -37,6 +37,9 @@ class NaukriDotComApply:
 
     def apply_recommended_jobs(self):
         """Extracts limited job postings from the recommended job page."""
+        if self.driver.current_url != self.link:
+            self.is_user_logged_in()
+
         jobs_css_pass = ("div.recommended-jobs-page div.list article"
                          if self.link == DEFAULT_LINK else "article")
         try:
@@ -52,6 +55,30 @@ class NaukriDotComApply:
 
         except TimeoutException:
             print("ERROR: No job elements found!")
+
+    def is_user_logged_in(self):
+        logged_in = True
+        opened_link = self.driver.current_url
+
+        if "login" in opened_link:
+            logged_in = False
+        else:
+            try:
+                WebDriverWait(self.driver, 1).until(
+                    ec.presence_of_element_located(
+                        (By.XPATH, "//a[contains(., 'Login')]")
+                    ))
+                logged_in = False
+            except TimeoutException:
+                pass
+
+        while not logged_in:
+            page_state = self.driver.execute_script('return document.readyState;')
+            if page_state == 'complete':
+                if self.link in self.driver.current_url:
+                    print("SUCCESS: You are now logged-in.")
+                    self.driver.get(self.link)
+                    break
 
     def dfs_job_traversal(self, articles, parent_tab, depth=1):
         """Recursively traverses job postings(DFS), applying jobs, limited depth."""

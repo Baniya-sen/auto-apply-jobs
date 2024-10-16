@@ -1,3 +1,4 @@
+import csv
 from os import path, makedirs, listdir
 
 from selenium import webdriver
@@ -9,6 +10,7 @@ from linkedin import LinkedInApply
 from naukridotcom import NaukriDotComApply
 
 from config import PROFILE_PATH, FINE_TUNED_MODEL_PATH
+from config import JOBS_POSTING_LOG_PATH, JOB_LOG_HEADERS
 
 # False both if you don't want to train the model
 MODEL_TRAINING, USE_FT_MODEL = True, True
@@ -19,6 +21,11 @@ def prerequisites():
 
     if not path.exists(PROFILE_PATH):
         makedirs(PROFILE_PATH)
+
+    if not path.isfile(JOBS_POSTING_LOG_PATH):
+        with open(JOBS_POSTING_LOG_PATH, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(JOB_LOG_HEADERS)
 
     if path.exists(FINE_TUNED_MODEL_PATH):
         if len(listdir(FINE_TUNED_MODEL_PATH)) >= 6:
@@ -55,8 +62,8 @@ def main():
         # )
         # linkedin_single_apply.easy_apply()
 
-        naukri_apply = NaukriDotComApply(driver=web_driver, model=qa_model)
-        # naukri_apply.apply_to_jobs()
+        naukri_apply = NaukriDotComApply(driver=web_driver)
+        naukri_apply.apply_recommended_jobs()
 
     finally:
         web_driver.quit()

@@ -1,4 +1,5 @@
 import csv
+import time
 from datetime import datetime
 
 from selenium.common.exceptions import ElementClickInterceptedException, InvalidSelectorException
@@ -28,9 +29,10 @@ class LinkedInApply:
         self.link = DEFAULT_LINK if not link else link
 
     def apply_to_jobs(self) -> None:
-        """Function to call to start applying for jobs"""
+        """Continue applying for jobs till target is hit."""
         while JOB_APPLY_TARGET != self.jobs_applied:
             self.driver.get(self.link)
+            self.is_user_logged_in()
 
             for job in self.get_all_job_postings():
                 self.driver.execute_script("arguments[0].scrollIntoView(true);", job)
@@ -47,6 +49,23 @@ class LinkedInApply:
 
                 if self.easy_apply(job.text):
                     self.jobs_traversed += 1
+
+    def is_user_logged_in(self):
+        time.sleep(30)
+
+        """<form class="join-form" action="/signup/api/cors/createAccount" method="post">
+        
+      <h1 class="authwall-join-form__title">Join LinkedIn</h1>
+<!---->    """
+
+        """<button class="authwall-join-form__form-toggle--bottom form-toggle" data-tracking-control-name="auth_wall_desktop_jserp-login-toggle" data-tracking-client-ingraph=""> Sign in </button>"""
+
+        try:
+            self.driver.find_element("login_field")
+
+            return True
+        except NoSuchElementException:
+            return False
 
     def get_all_job_postings(self):
         """Extract all jobs posting from UL element"""

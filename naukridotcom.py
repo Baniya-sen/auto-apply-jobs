@@ -15,10 +15,8 @@ from selenium.common.exceptions import ElementClickInterceptedException, Invalid
 from extractor import ExtractQuestionsAndInputs
 from model import QuestionAnsweringModel
 from filler import FillAnswers
-from config import DEFAULT_ANSWERS
+from config import DEFAULT_ANSWERS, PROFILE_PATH
 from config import JOBS_POSTING_LOG_PATH, JOB_LOG_HEADERS
-
-from config import PROFILE_PATH
 
 DEFAULT_LINK = "https://www.naukri.com/mnjuser/recommendedjobs"
 
@@ -186,7 +184,6 @@ class NaukriDotComApply:
         except TimeoutException:
             job_location = []
         self.job_info.append(", ".join(job_location) if job_location else None)
-        print(self.job_info)
 
     def log_applied_job(self, site):
         now = datetime.now()

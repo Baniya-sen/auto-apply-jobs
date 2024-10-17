@@ -58,12 +58,12 @@ def main():
         # linkedin_single_apply = LinkedInApply(
         #     web_driver,
         #     qa_model,
-        #     "https://www.linkedin.com/jobs/view/3994877775"
+        #     "https://www.linkedin.com/jobs/view/4051297577"
         # )
         # linkedin_single_apply.easy_apply()
 
-        naukri_apply = NaukriDotComApply(driver=web_driver)
-        naukri_apply.apply_recommended_jobs()
+        # naukri_apply = NaukriDotComApply(driver=web_driver)
+        # naukri_apply.apply_recommended_jobs()
 
     finally:
         web_driver.quit()

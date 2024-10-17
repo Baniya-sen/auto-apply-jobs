@@ -1,5 +1,4 @@
 import csv
-import time
 from datetime import datetime
 
 from selenium.common.exceptions import ElementClickInterceptedException, InvalidSelectorException
@@ -26,30 +25,12 @@ class LinkedInApply:
         self.all_jobs_count = 1
         self.jobs_traversed = 0
         self.jobs_applied = 0
+        self.apply_dialog_box = None
         self.link = DEFAULT_LINK if not link else link
 
-    def apply_to_jobs(self) -> None:
-        """Continue applying for jobs till target is hit."""
-        while JOB_APPLY_TARGET != self.jobs_applied:
-            self.driver.get(self.link)
-            if self.driver.current_url != self.link:
-                self.is_user_logged_in()
-
-            for job in self.get_all_job_postings():
-                self.driver.execute_script("arguments[0].scrollIntoView(true);", job)
-                WebDriverWait(self.driver, 2).until(ec.visibility_of(job))
-
-                self.get_job_info(job_element=job)
-                print(f"Processing job: {self.job_info[0]}, located in {self.job_info[2]}")
-
-                try:
-                    job.click()
-                except ElementClickInterceptedException:
-                    print("Failed to click job posting due to an overlay.\n")
-                    continue
-
-                if self.easy_apply(job.text):
-                    self.jobs_traversed += 1
+        self.driver.get(self.link)
+        if self.driver.current_url != self.link:
+            self.is_user_logged_in()
 
     def is_user_logged_in(self):
         logged_in = True
@@ -67,6 +48,7 @@ class LinkedInApply:
                 pass
 
         while not logged_in:
+            print("ERROR: You are not logged-in!")
             page_state = self.driver.execute_script('return document.readyState;')
             if page_state == 'complete':
                 if (self.link in self.driver.current_url
@@ -74,6 +56,29 @@ class LinkedInApply:
                     print("SUCCESS: You are now logged-in.")
                     self.driver.get(self.link)
                     break
+
+    def apply_to_jobs(self) -> None:
+        """Continue applying for jobs till target is hit."""
+        while JOB_APPLY_TARGET != self.jobs_applied:
+            for job in self.get_all_job_postings():
+                self.driver.execute_script("arguments[0].scrollIntoView(true);", job)
+                WebDriverWait(self.driver, 2).until(ec.visibility_of(job))
+
+                self.get_job_info(job_element=job)
+                print(f"Processing job: {self.job_info[0]}, located in {self.job_info[2]}")
+
+                try:
+                    job.click()
+                except ElementClickInterceptedException:
+                    print("ERROR: Failed to click job posting due to an overlay.\n")
+                    self.close_apply_dialog_box()
+                    self.close_submitted_dialog_box()
+                    continue
+
+                if self.easy_apply(job.text):
+                    self.jobs_traversed += 1
+
+            self.driver.get(self.link)
 
     def get_all_job_postings(self):
         """Extract all jobs posting from UL element"""
@@ -99,33 +104,36 @@ class LinkedInApply:
             info = job_element.find_element(By.XPATH, xpath)
             info = info.text.split(",")[0] if i == 2 else info.text
             self.job_info.append(info)
-        try:
-            exp_level_info = WebDriverWait(self.driver, 1).until(
-                ec.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR,
-                     "li.job-details-jobs-unified-top-card__job-insight."
-                     "job-details-jobs-unified-top-card__job-insight--highlight "
-                     "span.job-details-jobs-unified-top-card__job-insight-view-model-secondary")
-                ))
-            exp_level_info = exp_level_info[1].text if len(exp_level_info) == 2 else None
-        except TimeoutException:
-            exp_level_info = None
-        self.job_info.append(exp_level_info)
+
+        job_info_css_paths = [
+            "span.job-details-jobs-unified-top-card__job-insight-view-model-secondary[dir='ltr']",
+            "li.job-details-jobs-unified-top-card__job-insight.job-details-jobs-unified-top-card"
+            "__job-insight--highlight span[dir='ltr']",
+        ]
+        for i, path in enumerate(job_info_css_paths):
+            try:
+                info = WebDriverWait(self.driver, 2).until(
+                    ec.presence_of_element_located((By.XPATH, path))
+                )
+                info = info.text.split(",")[0] if i == 2 else info.text
+                self.job_info.append(info)
+            except TimeoutException:
+                self.job_info.append("Not Disclosed")
 
     def easy_apply(self, job_description="Easy Apply") -> bool:
         """Easily apply for a job by filling out the form and answering any additional questions."""
-
         if "Easy Apply" not in job_description or not self.apply_button_click():
             self.save_job_for_later()
             return False
 
-        apply_dialog_box = self.get_apply_dialog_box()
-        if not apply_dialog_box:
+        self.get_apply_dialog_box()
+        if not self.apply_dialog_box:
             return False
 
-        for attempt in range(7):
+        attempted, attempts = 0, 8
+        while attempted < attempts:
             try:
-                continue_button = WebDriverWait(apply_dialog_box, 5).until(
+                continue_button = WebDriverWait(self.apply_dialog_box, 5).until(
                     ec.presence_of_element_located(
                         (By.CSS_SELECTOR,
                          'button.artdeco-button.artdeco-button--2.artdeco-button--primary')
@@ -135,16 +143,17 @@ class LinkedInApply:
                     print(f"Successfully applied for: {self.job_info[0]}, at {self.job_info[1]}!\n")
                     self.jobs_applied += 1
                     self.log_applied_job("LinkedIn")
-                    self.close_submit_dialog_box()
+                    self.close_submitted_dialog_box()
                     return True
 
-                if self.get_prompt_reference(apply_dialog_box):
+                if self.get_prompt_reference():
                     self.fill_out_answers(self.get_additional_questions())
+                    attempted += 1
 
                 continue_button.click()
             except TimeoutException:
-                if attempt == 6:
-                    self.close_apply_dialog(apply_dialog_box)
+                if attempted == 7:
+                    self.close_apply_dialog_box()
                     return False
 
     def single_button_click_xpath(self, xpath, timeout=5) -> bool:
@@ -155,21 +164,25 @@ class LinkedInApply:
             )).click()
             return True
         except TimeoutException:
-            print("Sbc", TimeoutException)
+            print("ERROR: Sbc", TimeoutException)
             return False
 
     def apply_button_click(self) -> bool:
         """Clicks on apply button and checks for suspicious activity dialog-box"""
         apply_button_clicked = False
-        try:
-            WebDriverWait(self.driver, 5).until(
-                ec.element_to_be_clickable(
-                    (By.XPATH, "//button[contains(@class, 'jobs-apply-button')"
-                               " and contains(., 'Easy Apply')]")
-                )).click()
-            apply_button_clicked = True
-        except TimeoutException:
-            print("Easy Apply button not found!")
+        apply_button_paths = {
+            By.XPATH: "//button[contains(@class, 'jobs-apply-button') and contains(., 'Easy Apply')]",
+            By.CSS_SELECTOR: "button#ember45.jobs-apply-button.artdeco-button.artdeco-button--3"
+        }
+        for selector_method, path in apply_button_paths.items():
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    ec.element_to_be_clickable((selector_method, path))
+                ).click()
+                apply_button_clicked = True
+                break
+            except TimeoutException:
+                print("ERROR: Easy Apply button not found!")
 
         # LinkedIn's "Job search safety reminder" dialog-box check and close
         if apply_button_clicked:
@@ -189,19 +202,91 @@ class LinkedInApply:
 
         return apply_button_clicked
 
-    def get_apply_dialog_box(self):
+    def save_job_for_later(self) -> None:
+        """Saves a Non-Easy-apply job for later"""
         try:
-            apply_dialog_box = WebDriverWait(self.driver, 5).until(
+            WebDriverWait(self.driver, 2).until(
+                ec.element_to_be_clickable(
+                    (By.XPATH,
+                     '//button[contains(@class, "jobs-save-button") and contains(., "Save")]')
+                )).click()
+            print(f"SUCCESS: Job application '{self.job_info[0]}' at '{self.job_info[1]}' saved!\n")
+        except TimeoutException:
+            pass
+
+    def get_apply_dialog_box(self):
+        if len(self.job_info) != 4:
+            self.get_single_job_info()
+
+        try:
+            self.apply_dialog_box = WebDriverWait(self.driver, 5).until(
                 ec.presence_of_element_located(
                     (By.XPATH,
                      '//div[@role="dialog" and @aria-labelledby="jobs-apply-header"'
                      ' and contains(@class, "artdeco-modal")]')
                 ))
-            return apply_dialog_box
         except TimeoutException:
-            return None
+            print("ERROR: Apply dialog box not found!")
+            self.apply_dialog_box = None
 
-    def get_prompt_reference(self, apply_box_dialog) -> bool:
+    def get_single_job_info(self):
+        job_info_css_paths = [
+            "div.job-details-jobs-unified-top-card__job-title",
+            "div.job-details-jobs-unified-top-card__company-name",
+            "div.job-details-jobs-unified-top-card__primary-description-container span",
+            "span.job-details-jobs-unified-top-card__job-insight-view-model-secondary[dir='ltr']",
+            "li.job-details-jobs-unified-top-card__job-insight.job-details-jobs-unified-top-card"
+            "__job-insight--highlight span[dir='ltr']",
+        ]
+        for i, path in enumerate(job_info_css_paths):
+            try:
+                info = WebDriverWait(self.driver, 5).until(
+                    ec.presence_of_element_located((By.CSS_SELECTOR, path))
+                )
+                info = info.text.split(",")[0] if i == 2 else info.text
+                self.job_info.append(info)
+            except TimeoutException:
+                self.job_info.append(None)
+
+    def log_applied_job(self, site):
+        now = datetime.now()
+
+        new_job = [
+            self.job_info[0],
+            self.job_info[1],
+            self.job_info[3],
+            self.job_info[4],
+            self.job_info[2],
+            now.strftime("%d-%m-%Y"),
+            now.strftime("%H:%M"),
+            now.day,
+            now.month,
+            now.year,
+            site
+        ]
+        with open(JOBS_POSTING_LOG_PATH, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(new_job)
+
+    def close_submitted_dialog_box(self) -> None:
+        """Clicks on the close button on box that appears after submitting application"""
+        try:
+            post_apply_dialog_box = WebDriverWait(self.driver, 5).until(
+                ec.presence_of_element_located(
+                    (By.XPATH,
+                     '//div[@role="dialog" and @aria-labelledby="post-apply-modal"'
+                     ' and contains(@class, "artdeco-modal")]')
+                ))
+            WebDriverWait(post_apply_dialog_box, 5).until(
+                ec.element_to_be_clickable(
+                    (By.XPATH,
+                     '//button[@aria-label="Dismiss" and contains(@class, "artdeco-button")]')
+                )).click()
+        except (TimeoutException, InvalidSelectorException):
+            print("ERROR: Submit successful close-box not found!")
+            pass
+
+    def get_prompt_reference(self) -> bool:
         """Extracts text from form headline to identify if the form requires
            additional questions to fill, or it is basic requirements"""
         info_text = ""
@@ -209,7 +294,7 @@ class LinkedInApply:
 
         for xpath in prompts_paths:
             try:
-                info_text = WebDriverWait(apply_box_dialog, 1).until(
+                info_text = WebDriverWait(self.apply_dialog_box, 1).until(
                     ec.presence_of_element_located(
                         (By.CSS_SELECTOR, xpath)
                     )).text
@@ -220,20 +305,15 @@ class LinkedInApply:
         if info_text in {"Resume", "Education"}:
             return False
         elif info_text == "Work experience":
-            work_exp_cancel_xpath = (
-                '/html/body/div[3]/div/div/div[2]/div/'
-                'div[2]/form/div[1]/div/div[2]/button[1]'
-            )
-            if not self.single_button_click_xpath(work_exp_cancel_xpath, 1):
-                try:
-                    apply_box_dialog.find_element(
-                        By.XPATH,
-                        "//button[contains(@class, 'artdeco-button')"
-                        " and contains(., 'Cancel')]"
-                    ).click()
-                except NoSuchElementException:
-                    pass
-                return False
+            try:
+                self.apply_dialog_box.find_element(
+                    By.XPATH,
+                    "//button[contains(@class, 'artdeco-button')"
+                    " and contains(., 'Cancel')]"
+                ).click()
+            except NoSuchElementException:
+                pass
+            return False
         else:
             print(f"\nReference prompt: {info_text}")
             return True
@@ -258,7 +338,7 @@ class LinkedInApply:
             return questions_list
 
         except NoSuchElementException:
-            print("No additional questions dialog-box element found!")
+            print("INFO: No additional questions dialog-box element found!")
             return []
 
     def fill_out_answers(self, form_questions) -> None:
@@ -283,78 +363,28 @@ class LinkedInApply:
         form_filler = FillAnswers(self.driver, form_questions, nlp_answers)
         form_filler.fill_answers()
 
-    def close_submit_dialog_box(self) -> None:
-        """Clicks on the close button on box that appears after submitting application"""
+    def close_apply_dialog_box(self) -> None:
+        """Click on close button of application form and discards it"""
         try:
-            apply_dialog_box = WebDriverWait(self.driver, 5).until(
-                ec.presence_of_element_located(
-                    (By.XPATH,
-                     '//div[@role="dialog" and @aria-labelledby="post-apply-modal"'
-                     ' and contains(@class, "artdeco-modal")]')
-                ))
-            WebDriverWait(apply_dialog_box, 5).until(
+            WebDriverWait(self.apply_dialog_box, 5).until(
                 ec.element_to_be_clickable(
                     (By.XPATH,
                      '//button[@aria-label="Dismiss" and contains(@class, "artdeco-button")]')
                 )).click()
-        except (TimeoutException, InvalidSelectorException):
-            print("Submit close box not found!")
-            pass
-
-    def log_applied_job(self, site):
-        now = datetime.now()
-
-        new_job = [
-            self.job_info[0],
-            self.job_info[1],
-            self.job_info[3],
-            None,
-            self.job_info[2],
-            now.strftime("%d-%m-%Y"),
-            now.strftime("%H:%M"),
-            now.day,
-            now.month,
-            now.year,
-            site
-        ]
-        with open(JOBS_POSTING_LOG_PATH, mode='a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(new_job)
-
-    def save_job_for_later(self) -> None:
-        """Saves a Non-Easy-apply job for later"""
-        try:
-            WebDriverWait(self.driver, 2).until(
-                ec.element_to_be_clickable(
-                    (By.XPATH,
-                     '//button[contains(@class, "jobs-save-button") and contains(., "Save")]')
-                )).click()
-            print(f"Job application '{self.job_info[0]}' at '{self.job_info[1]}' saved!\n")
-        except TimeoutException:
-            pass
-
-    def close_apply_dialog(self, apply_box_dialog) -> None:
-        """Click on close button of application form and discards it"""
-        try:
-            apply_box_dialog.find_element(
-                By.XPATH,
-                '//button[@aria-label="Dismiss" and contains(@class, "artdeco-button")]'
-            ).click()
-
             job_close_save_box = WebDriverWait(self.driver, 5).until(
                 ec.presence_of_element_located(
                     (By.XPATH,
                      '//div[@role="alertdialog" and @aria-describedby="dialog-desc-st7"'
                      ' and contains(@class, "artdeco-modal")]')
                 ))
-            job_close_save_box.find_element(
-                By.XPATH,
-                '//button[@data-control-name="discard_application_confirm_btn"'
-                ' and contains(@class, "artdeco-button")]'
-            ).click()
-
-            print("Application disposed!", end="\n\n")
+            WebDriverWait(job_close_save_box, 5).until(
+                ec.element_to_be_clickable(
+                    (By.XPATH,
+                     '//button[@data-control-name="discard_application_confirm_btn"'
+                     ' and contains(@class, "artdeco-button")]')
+                )).click()
+            print("SUCCESS: Application disposed!", end="\n\n")
 
         except (TimeoutException, InvalidSelectorException):
-            print("Close button not found!")
+            print("ERROR: Application could not be disposed!")
             pass

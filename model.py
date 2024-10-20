@@ -1,4 +1,3 @@
-import random
 import re
 from logging import getLogger, ERROR
 from warnings import filterwarnings

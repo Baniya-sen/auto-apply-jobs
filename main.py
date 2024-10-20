@@ -11,8 +11,9 @@ from naukridotcom import NaukriDotComApply
 
 from config import PROFILE_PATH, FINE_TUNED_MODEL_PATH
 from config import JOBS_POSTING_LOG_PATH, JOB_LOG_HEADERS
+from config import TOTAL_JOBS_LOG_PATH, TOTAL_JOBS_LOG_HEADERS
 
-# False both if you don't want to train the model
+# False these both if you don't want to train the model
 MODEL_TRAINING, USE_FT_MODEL = True, True
 
 
@@ -23,9 +24,14 @@ def prerequisites():
         makedirs(PROFILE_PATH)
 
     if not path.isfile(JOBS_POSTING_LOG_PATH):
-        with open(JOBS_POSTING_LOG_PATH, mode='a', newline='') as file:
+        with open(JOBS_POSTING_LOG_PATH, mode='a', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerow(JOB_LOG_HEADERS)
+
+    if not path.isfile(TOTAL_JOBS_LOG_PATH):
+        with open(TOTAL_JOBS_LOG_PATH, mode='a', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerow(TOTAL_JOBS_LOG_HEADERS)
 
     if path.exists(FINE_TUNED_MODEL_PATH):
         if len(listdir(FINE_TUNED_MODEL_PATH)) >= 6:
@@ -52,18 +58,18 @@ def main():
     qa_model = QuestionAnsweringModel(USE_FT_MODEL)
 
     try:
-        linkedin_apply = LinkedInApply(driver=web_driver, model=qa_model)
-        linkedin_apply.apply_to_jobs()
+        # linkedin_apply = LinkedInApply(driver=web_driver, model=qa_model)
+        # linkedin_apply.easy_apply_to_jobs()
 
         # linkedin_single_apply = LinkedInApply(
         #     web_driver,
         #     qa_model,
-        #     "https://www.linkedin.com/jobs/view/4051297577"
+        #     "https://www.linkedin.com/jobs/view/4053078767"
         # )
-        # linkedin_single_apply.easy_apply()
+        # linkedin_single_apply.easy_apply_single_job()
 
-        # naukri_apply = NaukriDotComApply(driver=web_driver)
-        # naukri_apply.apply_recommended_jobs()
+        naukri_apply = NaukriDotComApply(driver=web_driver)
+        naukri_apply.apply_recommended_jobs()
 
     finally:
         web_driver.quit()

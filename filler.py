@@ -59,6 +59,15 @@ class FillAnswers:
                     checkbox_element = self.driver.find_element(By.XPATH, checkbox_xpath)
                     checkbox_element.click()
 
+                else:
+                    input_element = self.driver.find_element(
+                        By.XPATH,
+                        f"//label[span[contains(normalize-space(text()), "
+                        f"'{question_text.strip()}')]]/following-sibling::div/input"
+                    )
+                    input_element.clear()
+                    input_element.send_keys(answer['text'])
+
             except (TimeoutException, NoSuchElementException, InvalidSelectorException) as e:
                 print(f"Failed to fill {input_type} for question '{question_text}'")
                 print(e)

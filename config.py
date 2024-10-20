@@ -3,7 +3,8 @@ from os import path
 # Default paths
 PROFILE_PATH = path.abspath("selenium_profile")
 FINE_TUNED_MODEL_PATH = path.abspath("fine_tuned_model")
-JOBS_POSTING_LOG_PATH = path.abspath("jobs_applied_log.csv")
+JOBS_POSTING_LOG_PATH = path.abspath("logs/jobs_applied_log.csv")
+TOTAL_JOBS_LOG_PATH = path.abspath("logs/total_jobs_log.csv")
 
 # Default answers to basic questions
 DEFAULT_ANSWERS = {
@@ -21,6 +22,7 @@ DEFAULT_ANSWERS = {
 JOB_APPLY_TARGET = 25
 JOB_LOG_HEADERS = ["Job Title", "Company Name", "Experience", "Salary", "Location",
                    "Date Applied", "Time Applied", "Day", "Month", "Year", "Job Site"]
+TOTAL_JOBS_LOG_HEADERS = ["Date", "Jobs Extracted", "Job Traversed", "Job Applied", "Jobs Saved", "Site"]
 
 # These are the context passage, training questions, and answers for model to train from
 SUMMARY_TEXT = """SUMMARY: I have 0 years of work experience in anything I did not mentioned here. If I don't mention 

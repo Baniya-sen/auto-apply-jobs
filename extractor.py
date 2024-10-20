@@ -4,12 +4,14 @@ from bs4 import BeautifulSoup
 
 def clean_text(text):
     """Remove trailing 'required' or similar words and duplicate parts in the question"""
-    text = re.sub(r'\s*required\b', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'(\b[\w\s]+\b)\s*\1+', r'\1', text)
-    text = re.sub(r'\b(\w+)\b\s*\?\s*.*\?\s*$', r'\1?', text)
-    text = re.sub(r'(?<!\S)(.+?)(?:(?!\S)\s*|\s*)(\1)(?!\S)', r'\1', text)
-    text = ' '.join(text.split())
-    return text.strip()
+    if text:
+        text = re.sub(r'\s*required\b', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'(\b[\w\s]+\b)\s*\1+', r'\1', text)
+        text = re.sub(r'\b(\w+)\b\s*\?\s*.*\?\s*$', r'\1?', text)
+        text = re.sub(r'(?<!\S)(.+?)(?:(?!\S)\s*|\s*)(\1)(?!\S)', r'\1', text)
+        text = ' '.join(text.split())
+        return text.strip()
+    return " "
 
 
 class ExtractQuestionsAndInputs:
@@ -45,11 +47,15 @@ class ExtractQuestionsAndInputs:
                             if opt.get_text(strip=True) != 'Select an option']
             question_text_extracted = section.find(
                 'label', {'data-test-text-entity-list-form-title': True}
-            ).get_text(strip=True)
+            )
+            if question_text_extracted:
+                question_text_extracted = question_text_extracted.get_text(strip=True)
 
         elif section.find('fieldset', {'data-test-checkbox-form-component': True}):
             self.options = [opt.get_text(strip=True) for opt in section.find_all('label')]
-            question_text_extracted = section.find('legend').get_text(strip=True)
+            question_text_extracted = section.find('legend')
+            if question_text_extracted:
+                question_text_extracted = question_text_extracted.get_text(strip=True)
 
         else:
             question_text_extracted = ""

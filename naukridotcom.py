@@ -13,46 +13,27 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.common.exceptions import ElementClickInterceptedException, InvalidSelectorException
 
 from extractor import ExtractQuestionsAndInputs
+from job_logger import log_applied_job, total_jobs_log
 from model import QuestionAnsweringModel
-from filler import FillAnswers
+from config import JOB_APPLY_TARGET
 from config import DEFAULT_ANSWERS, PROFILE_PATH
-from config import JOBS_POSTING_LOG_PATH, JOB_LOG_HEADERS
 
 DEFAULT_LINK = "https://www.naukri.com/mnjuser/recommendedjobs"
 
 
 class NaukriDotComApply:
-    def __init__(self, driver: WebDriver, no_of_jobs=50, link=None):
+    def __init__(self, driver: WebDriver, link=None):
         """Naukri.com class to apply to all naukri jobs through Selenium webdriver"""
         self.driver = driver
-        self.job_info = []
-        self.all_jobs_count = 1
+        self.job_info = {}
+        self.all_jobs_count = 0
         self.jobs_traversed = 0
         self.jobs_applied = 0
-        self.apply_target = int(sqrt(min(no_of_jobs, 225)))
+        self.apply_target = int(sqrt(min(JOB_APPLY_TARGET, 225)))
         self.link = DEFAULT_LINK if not link else link
         self.driver.get(self.link)
-
-    def apply_recommended_jobs(self):
-        """Extracts limited job postings from the recommended job page."""
         if self.driver.current_url != self.link:
             self.is_user_logged_in()
-
-        jobs_css_pass = ("div.recommended-jobs-page div.list article"
-                         if self.link == DEFAULT_LINK else "article")
-        try:
-            articles = WebDriverWait(self.driver, 5).until(
-                ec.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR, jobs_css_pass)
-                )
-            )[0:self.apply_target]
-
-            original_tab = self.driver.current_window_handle
-            total_job_processed = self.dfs_job_traversal(articles, original_tab)
-            print("Total jobs traversed are", total_job_processed + len(articles))
-
-        except TimeoutException:
-            print("ERROR: No job elements found!")
 
     def is_user_logged_in(self):
         logged_in = True
@@ -77,6 +58,32 @@ class NaukriDotComApply:
                     print("SUCCESS: You are now logged-in.")
                     self.driver.get(self.link)
                     break
+
+    def apply_recommended_jobs(self):
+        """Extracts limited job postings from the recommended job page."""
+        jobs_css_pass = ("div.recommended-jobs-page div.list article"
+                         if self.link == DEFAULT_LINK else "article")
+        try:
+            articles = WebDriverWait(self.driver, 5).until(
+                ec.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, jobs_css_pass)
+                )
+            )[0:self.apply_target]
+
+            original_tab = self.driver.current_window_handle
+            self.all_jobs_count = self.dfs_job_traversal(articles, original_tab) + len(articles)
+            print("Total jobs traversed are", self.all_jobs_count)
+
+            total_jobs_log(
+                self.all_jobs_count,
+                self.all_jobs_count,
+                self.jobs_applied,
+                self.jobs_traversed - self.jobs_applied,
+                "NaukriDotCom"
+            )
+
+        except TimeoutException:
+            print("ERROR: No job elements found!")
 
     def dfs_job_traversal(self, articles, parent_tab, depth=1):
         """Recursively traverses job postings(DFS), applying jobs, limited depth."""
@@ -139,7 +146,7 @@ class NaukriDotComApply:
             reference_element = WebDriverWait(self.driver, 2).until(
                 ec.presence_of_element_located((By.TAG_NAME, "html"))
             )
-            WebDriverWait(self.driver, 1).until(
+            WebDriverWait(self.driver, 2).until(
                 ec.element_to_be_clickable(
                     (By.XPATH,
                      '//button[contains(@id, "apply-button") and contains(text(), "Apply")]')
@@ -149,60 +156,43 @@ class NaukriDotComApply:
                     ec.staleness_of(reference_element)
                 )
                 print(f"Successfully applied for the {self.job_info[0]} at {self.job_info[1]}.")
-                self.log_applied_job("Naukridotcom")
+                log_applied_job(self.job_info, "Naukridotcom")
+                self.jobs_applied += 1
             except (TimeoutException, NoSuchElementException):
+                self.jobs_traversed += 1
                 print("ERROR: This job requires additional answers!.")
 
         except TimeoutException:
             pass
 
     def get_job_info(self):
-        self.job_info = []
-
-        job_position_cname_exp_salary_css_paths = [
-            "div#root section#job_header h1",
-            "div#root section#job_header a",
-            "div#root section#job_header div.styles_jhc__exp__k_giM",
-            "div#root section#job_header div.styles_jhc__salary__jdfEC"
-        ]
-        for path in job_position_cname_exp_salary_css_paths:
+        job_position_cname_exp_salary_css_paths = {
+            "job_position": "div#root section#job_header h1",
+            "company_name": "div#root section#job_header a",
+            "experience_level": "div#root section#job_header div.styles_jhc__exp__k_giM",
+            "salary": "div#root section#job_header div.styles_jhc__salary__jdfEC",
+            "job_location": "div#root section#job_header span.styles_jhc__location__W_pVs a",
+        }
+        for info_name, path in job_position_cname_exp_salary_css_paths.items():
+            if info_name == "job_location":
+                break
             try:
                 info = WebDriverWait(self.driver, 1).until(
                     ec.presence_of_element_located((By.CSS_SELECTOR, path))
                     ).text
             except TimeoutException:
                 info = None
-            self.job_info.append(info)
+            self.job_info[info_name] = info
 
         try:
-            job_location_css_path = "div#root section#job_header span.styles_jhc__location__W_pVs a"
             job_location_elements = WebDriverWait(self.driver, 1).until(
                 ec.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR, job_location_css_path))
+                    (By.CSS_SELECTOR, job_position_cname_exp_salary_css_paths["job_location"]))
             )
-            job_location = [job_location_element.text for job_location_element in job_location_elements]
+            job_location = [location_element.text for location_element in job_location_elements]
         except TimeoutException:
             job_location = []
-        self.job_info.append(", ".join(job_location) if job_location else None)
-
-    def log_applied_job(self, site):
-        now = datetime.now()
-        new_job = [
-            self.job_info[0],
-            self.job_info[1],
-            self.job_info[2],
-            self.job_info[3],
-            self.job_info[4],
-            now.strftime("%d-%m-%Y"),
-            now.strftime("%H:%M"),
-            now.day,
-            now.month,
-            now.year,
-            site
-        ]
-        with open(JOBS_POSTING_LOG_PATH, mode='a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(new_job)
+        self.job_info["job_location"] = ", ".join(job_location) if job_location else None
 
 
 if __name__ == "__main__":

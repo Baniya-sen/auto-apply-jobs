@@ -21,7 +21,7 @@ class LinkedInApply:
         """LinkedIn class to apply to all LinkedIn easy-apply jobs through Selenium webdriver"""
         self.driver = driver
         self.model = model
-        self.job_info = {}
+        self.job_info = dict()
         self.all_jobs_count = 1
         self.jobs_traversed = 0
         self.jobs_applied = 0
@@ -108,14 +108,14 @@ class LinkedInApply:
                     ec.presence_of_element_located((By.CSS_SELECTOR, path))
                 )
                 info = info.text.split(",")[0] if i == 2 else info.text
-                self.job_info[info_tag] = path
+                self.job_info[info_tag] = info
             except TimeoutException:
                 self.job_info[info_tag] = None
 
     def easy_apply_single_job(self, job_description="Easy Apply") -> bool:
         """Easy apply for job by filling out form and answering any additional questions."""
         self._get_job_info()
-        print(f"Processing job: {self.job_info[0]}, located in {self.job_info[2]}")
+        print(f"Processing job: {self.job_info["job_position"]}, at {self.job_info["company_name"]}")
 
         if "Easy Apply" not in job_description or not self._apply_button_click():
             self._save_job_for_later()
@@ -136,7 +136,8 @@ class LinkedInApply:
                 if continue_button.text == "Submit application":
                     self.driver.execute_script("arguments[0].scrollIntoView(true);", continue_button)
                     continue_button.click()
-                    print(f"Successfully applied for: {self.job_info[0]}, at {self.job_info[1]}!\n")
+                    print(f"Successfully applied for: {self.job_info["job_position"]},"
+                          f" at {self.job_info["company_name"]}!\n")
                     self.jobs_applied += 1
                     log_applied_job(self.job_info, "LinkedIn")
                     self._close_submitted_dialog_box()
@@ -154,6 +155,8 @@ class LinkedInApply:
                     print("ERROR: Application could not be pass!")
                     self._close_apply_dialog_box()
                     return False
+            except ElementClickInterceptedException:
+                return False
 
     def _apply_button_click(self) -> bool:
         """Clicks on apply button and checks for suspicious activity dialog-box"""
@@ -198,7 +201,7 @@ class LinkedInApply:
                     (By.XPATH,
                      '//button[contains(@class, "jobs-save-button") and contains(., "Save")]')
                 )).click()
-            print(f"SUCCESS: Job application '{self.job_info[0]}' at '{self.job_info[1]}' saved!\n")
+            print(f"SUCCESS: Job application '{self.job_info["job_position"]}' saved!\n")
         except TimeoutException:
             pass
 
@@ -231,7 +234,8 @@ class LinkedInApply:
                      '//button[@aria-label="Dismiss" and contains(@class, "artdeco-button")]')
                 )).click()  # THIS IS ElementClickInterceptedException PROBLEM
             print("Dismiss found post.")
-        except (TimeoutException, InvalidSelectorException, ElementClickInterceptedException):
+        except (TimeoutException, InvalidSelectorException,
+                ElementClickInterceptedException, StaleElementReferenceException):
             print("ERROR: Submit successful close-box not found!")
             pass
 

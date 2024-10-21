@@ -25,7 +25,7 @@ class NaukriDotComApply:
     def __init__(self, driver: WebDriver, link=None):
         """Naukri.com class to apply to all naukri jobs through Selenium webdriver"""
         self.driver = driver
-        self.job_info = {}
+        self.job_info = dict()
         self.all_jobs_count = 0
         self.jobs_traversed = 0
         self.jobs_applied = 0
@@ -64,13 +64,13 @@ class NaukriDotComApply:
         jobs_css_pass = ("div.recommended-jobs-page div.list article"
                          if self.link == DEFAULT_LINK else "article")
         try:
-            articles = WebDriverWait(self.driver, 5).until(
+            articles = set(WebDriverWait(self.driver, 5).until(
                 ec.presence_of_all_elements_located(
                     (By.CSS_SELECTOR, jobs_css_pass)
                 )
-            )[0:self.apply_target]
+            )[0:self.apply_target])
 
-            original_tab = self.driver.current_window_handle
+            original_tab = set(self.driver.current_window_handle)
             self.all_jobs_count = self.dfs_job_traversal(articles, original_tab) + len(articles)
             print("Total jobs traversed are", self.all_jobs_count)
 
@@ -94,13 +94,13 @@ class NaukriDotComApply:
 
         for i, article in enumerate(articles):
             try:
-                original_tabs = self.driver.window_handles
+                original_tabs = set(self.driver.window_handles)
                 article.click()
                 WebDriverWait(self.driver, 5).until(
                     ec.number_of_windows_to_be(len(original_tabs) + 1))
 
                 new_tab = [
-                    tab for tab in self.driver.window_handles
+                    tab for tab in set(self.driver.window_handles)
                     if tab not in original_tabs
                 ][0]
                 self.driver.switch_to.window(new_tab)
@@ -133,7 +133,7 @@ class NaukriDotComApply:
                     (By.CSS_SELECTOR, "article")
                 )
             )
-            return articles[0:self.apply_target]
+            return set(articles[0:self.apply_target])
         except TimeoutException:
             print("ERROR: No job articles found!")
             return []
@@ -155,7 +155,7 @@ class NaukriDotComApply:
                 WebDriverWait(self.driver, 2).until(
                     ec.staleness_of(reference_element)
                 )
-                print(f"Successfully applied for the {self.job_info[0]} at {self.job_info[1]}.")
+                print(f"Successfully applied for {self.job_info["job_position"]} at {self.job_info["company_name"]}.")
                 log_applied_job(self.job_info, "Naukridotcom")
                 self.jobs_applied += 1
             except (TimeoutException, NoSuchElementException):

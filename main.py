@@ -58,13 +58,13 @@ def main():
     qa_model = QuestionAnsweringModel(USE_FT_MODEL)
 
     try:
-        # linkedin_apply = LinkedInApply(driver=web_driver, model=qa_model)
-        # linkedin_apply.easy_apply_to_jobs()
+        linkedin_apply = LinkedInApply(driver=web_driver, model=qa_model)
+        linkedin_apply.easy_apply_to_jobs()
 
         # linkedin_single_apply = LinkedInApply(
         #     web_driver,
         #     qa_model,
-        #     "https://www.linkedin.com/jobs/view/4053078767"
+        #     "https://www.linkedin.com/jobs/view/4026655076"
         # )
         # linkedin_single_apply.easy_apply_single_job()
 

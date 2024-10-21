@@ -55,9 +55,10 @@ class ExtractQuestionsAndFillAnswers:
                 By.XPATH, './/select[@data-test-text-entity-list-form-select]'):
             self._fill_select(selects[0], section)
 
-        elif checkboxes := section.find_elements(
-                By.XPATH, './/input[@data-test-form-builder-checkbox-form-component]'):
-            checkboxes[0].click()
+        elif checkboxes := section.find_elements(By.XPATH, './/input[@type="checkbox"]'):
+            for checkbox in checkboxes:
+                label = checkbox.find_element(By.XPATH, 'following-sibling::label')
+                label.click()
 
         elif inputs := section.find_elements(By.XPATH, './/input[@type="text"]'):
             self._fill_input(section, inputs[0])
@@ -122,8 +123,11 @@ class ExtractQuestionsAndFillAnswers:
     def _click_outside_to_hide_dropdown(self):
         """Click on a non-interactive area to close the suggestion dropdown."""
         try:
-            html_element = self.driver.find_element(By.TAG_NAME, 'html')
-            html_element.click()
+            dialog_element = self.driver.find_element(
+                By.CSS_SELECTOR,
+                'div.artdeco-modal__header h2#jobs-apply-header'
+            )
+            dialog_element.click()
         except NoSuchElementException:
             print("Warning: Could not find element to click. Dropdown remain open.")
 

@@ -3,6 +3,7 @@ from os import path
 # Default paths
 PROFILE_PATH = path.abspath("selenium_profile")
 FINE_TUNED_MODEL_PATH = path.abspath("fine_tuned_model")
+LOGS_PATH = path.abspath("logs")
 JOBS_POSTING_LOG_PATH = path.abspath("logs/jobs_applied_log.csv")
 TOTAL_JOBS_LOG_PATH = path.abspath("logs/total_jobs_log.csv")
 

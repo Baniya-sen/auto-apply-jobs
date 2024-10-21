@@ -9,7 +9,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.common.exceptions import StaleElementReferenceException, InvalidSelectorException
 
 from model import QuestionAnsweringModel
-from extract_and_fill import ExtractQuestionsAndFillAnswers
+from extract_and_fill import LinkedInExtractAndFill
 from job_logger import log_applied_job, total_jobs_log
 from config import JOB_APPLY_TARGET
 
@@ -59,20 +59,24 @@ class LinkedInApply:
 
     def easy_apply_to_jobs(self) -> None:
         """Continue applying for jobs till target is hit."""
-        while JOB_APPLY_TARGET != self.jobs_applied:
-            for job in self._get_all_job_postings():
-                self.driver.execute_script("arguments[0].scrollIntoView(true);", job)
-                WebDriverWait(self.driver, 2).until(ec.visibility_of(job))
+        try:
+            while JOB_APPLY_TARGET >= self.jobs_applied:
+                for job in self._get_all_job_postings():
+                    self.driver.execute_script("arguments[0].scrollIntoView(true);", job)
+                    WebDriverWait(self.driver, 2).until(ec.visibility_of(job))
 
-                try:
-                    job.click()
-                    if self.easy_apply_single_job(job.text):
-                        self.jobs_traversed += 1
-                except ElementClickInterceptedException:
-                    print("ERROR: Failed to click job posting due to an overlay.\n")
-                    break
+                    try:
+                        job.click()
+                        if self.easy_apply_single_job(job.text):
+                            self.jobs_traversed += 1
+                    except (ElementClickInterceptedException, StaleElementReferenceException):
+                        print("ERROR: Failed click due to overlay / Element is stale.\n")
+                        break
 
-            self.driver.get(self.link)
+                self.driver.get(self.link)
+
+        except Exception as e:
+            print(e)
 
         total_jobs_log(
             self.all_jobs_count,
@@ -102,12 +106,12 @@ class LinkedInApply:
             "salary": "li.job-details-jobs-unified-top-card__job-insight:first-of-type span[dir='ltr']:not([class])",
             "job_location": "div.job-details-jobs-unified-top-card__primary-description-container span",
         }
-        for i, (info_tag, path) in enumerate(job_info_css_paths.items()):
+        for info_tag, path in job_info_css_paths.items():
             try:
                 info = WebDriverWait(self.driver, 5).until(
                     ec.presence_of_element_located((By.CSS_SELECTOR, path))
                 )
-                info = info.text.split(",")[0] if i == 2 else info.text
+                info = info.text.split(",")[0] if info_tag == "job_location" else info.text
                 self.job_info[info_tag] = info
             except TimeoutException:
                 self.job_info[info_tag] = None
@@ -115,7 +119,6 @@ class LinkedInApply:
     def easy_apply_single_job(self, job_description="Easy Apply") -> bool:
         """Easy apply for job by filling out form and answering any additional questions."""
         self._get_job_info()
-        print(f"Processing job: {self.job_info["job_position"]}, at {self.job_info["company_name"]}")
 
         if "Easy Apply" not in job_description or not self._apply_button_click():
             self._save_job_for_later()
@@ -136,8 +139,8 @@ class LinkedInApply:
                 if continue_button.text == "Submit application":
                     self.driver.execute_script("arguments[0].scrollIntoView(true);", continue_button)
                     continue_button.click()
-                    print(f"Successfully applied for: {self.job_info["job_position"]},"
-                          f" at {self.job_info["company_name"]}!\n")
+                    print(f'SUCCESS: Successfully applied for: {self.job_info["job_position"]},'
+                          f' at {self.job_info["company_name"]}!')
                     self.jobs_applied += 1
                     log_applied_job(self.job_info, "LinkedIn")
                     self._close_submitted_dialog_box()
@@ -201,7 +204,7 @@ class LinkedInApply:
                     (By.XPATH,
                      '//button[contains(@class, "jobs-save-button") and contains(., "Save")]')
                 )).click()
-            print(f"SUCCESS: Job application '{self.job_info["job_position"]}' saved!\n")
+            print(f'SUCCESS: Job application "{self.job_info["job_position"]}" saved!')
         except TimeoutException:
             pass
 
@@ -226,14 +229,12 @@ class LinkedInApply:
                      '//div[@role="dialog" and @aria-labelledby="post-apply-modal"'
                      ' and contains(@class, "artdeco-modal")]')
                 ))
-            print("Dialog found post.")
             time.sleep(1)
             WebDriverWait(post_apply_dialog_box, 10).until(
                 ec.element_to_be_clickable(
                     (By.XPATH,
                      '//button[@aria-label="Dismiss" and contains(@class, "artdeco-button")]')
                 )).click()  # THIS IS ElementClickInterceptedException PROBLEM
-            print("Dismiss found post.")
         except (TimeoutException, InvalidSelectorException,
                 ElementClickInterceptedException, StaleElementReferenceException):
             print("ERROR: Submit successful close-box not found!")
@@ -268,13 +269,12 @@ class LinkedInApply:
             except NoSuchElementException:
                 return True
         else:
-            print(f"\nReference prompt: {info_text}")
             return True
 
     def _get_additional_questions_and_answer(self) -> None:
         """Extract questions and its type if the form requires additional info"""
         try:
-            extractor = ExtractQuestionsAndFillAnswers(self.driver, self.model)
+            extractor = LinkedInExtractAndFill(self.driver, self.model)
             extractor.parse_questions_and_answers()
 
         except Exception as e:

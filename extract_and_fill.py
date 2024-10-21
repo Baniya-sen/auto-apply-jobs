@@ -23,9 +23,9 @@ def clean_text(text) -> str:
     return " "
 
 
-class ExtractQuestionsAndFillAnswers:
+class LinkedInExtractAndFill:
     def __init__(self, driver: WebDriver, model: QuestionAnsweringModel) -> None:
-        """Extract questions and options and fill inputs using Selenium WebDriver"""
+        """Extract LinkedIn questions and options and fill inputs using Selenium"""
         self.driver = driver
         self.model = model
 
@@ -107,6 +107,7 @@ class ExtractQuestionsAndFillAnswers:
             question_text = section.find_element(By.TAG_NAME, 'label')
             question_text = clean_text(question_text.text.strip())
             answer = self._get_answer_from_model(question_text)
+
             if (answer == DEFAULT_ANSWERS.get(question_text) or
                     (isinstance(answer, str) and answer.isdigit()) or
                     isinstance(answer, int)):
@@ -137,3 +138,27 @@ class ExtractQuestionsAndFillAnswers:
             answer = self.model.ask_question(question)
 
         return answer
+
+
+class NaukriDotComExtractAndFill:
+    def __init__(self, driver: WebDriver, model: QuestionAnsweringModel) -> None:
+        """Extract NaukriDotCom questions and options and fill inputs using Selenium"""
+        self.driver = driver
+        self.model = model
+
+    def parse_questions_and_answers(self) -> None:
+        """Find and extract job-related form elements"""
+        try:
+            chat_box_dialog = WebDriverWait(self.driver, 10).until(
+                ec.presence_of_element_located(
+                    (By.CSS_SELECTOR, 'div.chatbot_DrawerContentWrapper')
+                ))
+            question_elements = WebDriverWait(chat_box_dialog, 10).until(
+                ec.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, 'li.botItem.chatbot_ListItem')
+                ))
+            for question in question_elements:
+                print(question.text.strip())
+
+        except TimeoutException:
+            print("No dialog box/questions section found!")

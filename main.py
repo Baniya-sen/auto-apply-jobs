@@ -10,7 +10,7 @@ from linkedin import LinkedInApply
 from naukridotcom import NaukriDotComApply
 
 from config import PROFILE_PATH, FINE_TUNED_MODEL_PATH
-from config import JOBS_POSTING_LOG_PATH, JOB_LOG_HEADERS
+from config import LOGS_PATH, JOBS_POSTING_LOG_PATH, JOB_LOG_HEADERS
 from config import TOTAL_JOBS_LOG_PATH, TOTAL_JOBS_LOG_HEADERS
 
 # False these both if you don't want to train the model
@@ -23,13 +23,18 @@ def prerequisites():
     if not path.exists(PROFILE_PATH):
         makedirs(PROFILE_PATH)
 
+    if not path.exists(LOGS_PATH):
+        makedirs(LOGS_PATH)
+
     if not path.isfile(JOBS_POSTING_LOG_PATH):
-        with open(JOBS_POSTING_LOG_PATH, mode='a', newline='', encoding='utf-8') as file:
+        with open(JOBS_POSTING_LOG_PATH, mode='a',
+                  newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerow(JOB_LOG_HEADERS)
 
     if not path.isfile(TOTAL_JOBS_LOG_PATH):
-        with open(TOTAL_JOBS_LOG_PATH, mode='a', newline='', encoding='utf-8') as file:
+        with open(TOTAL_JOBS_LOG_PATH, mode='a',
+                  newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerow(TOTAL_JOBS_LOG_HEADERS)
 

@@ -12,13 +12,14 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.common.exceptions import ElementClickInterceptedException, InvalidSelectorException
 
-from extractor import ExtractQuestionsAndInputs
-from job_logger import log_applied_job, total_jobs_log
 from model import QuestionAnsweringModel
 from config import JOB_APPLY_TARGET
 from config import DEFAULT_ANSWERS, PROFILE_PATH
+from job_logger import log_applied_job, total_jobs_log
+from extract_and_fill import NaukriDotComExtractAndFill
 
 DEFAULT_LINK = "https://www.naukri.com/mnjuser/recommendedjobs"
+MAXIMUM_TRIES = 5
 
 
 class NaukriDotComApply:
@@ -26,9 +27,11 @@ class NaukriDotComApply:
         """Naukri.com class to apply to all naukri jobs through Selenium webdriver"""
         self.driver = driver
         self.job_info = dict()
+        self.all_articles = []
         self.all_jobs_count = 0
         self.jobs_traversed = 0
         self.jobs_applied = 0
+        self.job_apply_failed_count = 0
         self.apply_target = int(sqrt(min(JOB_APPLY_TARGET, 225)))
         self.link = DEFAULT_LINK if not link else link
         self.driver.get(self.link)
@@ -52,6 +55,7 @@ class NaukriDotComApply:
                 pass
 
         while not logged_in:
+            print("ERROR: You are not logged-in!")
             page_state = self.driver.execute_script('return document.readyState;')
             if page_state == 'complete':
                 if self.link in self.driver.current_url:
@@ -61,29 +65,33 @@ class NaukriDotComApply:
 
     def apply_recommended_jobs(self):
         """Extracts limited job postings from the recommended job page."""
-        jobs_css_pass = ("div.recommended-jobs-page div.list article"
-                         if self.link == DEFAULT_LINK else "article")
-        try:
-            articles = set(WebDriverWait(self.driver, 5).until(
-                ec.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR, jobs_css_pass)
+        while JOB_APPLY_TARGET >= self.jobs_applied:
+            jobs_css_pass = ("div.recommended-jobs-page div.list article"
+                             if self.link == DEFAULT_LINK else "article")
+            try:
+                articles = WebDriverWait(self.driver, 5).until(
+                    ec.presence_of_all_elements_located(
+                        (By.CSS_SELECTOR, jobs_css_pass)
+                    )
                 )
-            )[0:self.apply_target])
+                articles = articles[0:min(self.apply_target, len(articles))]
+                self.all_articles.extend([article for article in articles if article not in self.all_articles])
+                original_tab = self.driver.current_window_handle
+                self.all_jobs_count = self.dfs_job_traversal(articles, original_tab) + len(articles)
 
-            original_tab = set(self.driver.current_window_handle)
-            self.all_jobs_count = self.dfs_job_traversal(articles, original_tab) + len(articles)
-            print("Total jobs traversed are", self.all_jobs_count)
+            except TimeoutException:
+                print("ERROR: No job elements found!")
+                break
 
-            total_jobs_log(
-                self.all_jobs_count,
-                self.all_jobs_count,
-                self.jobs_applied,
-                self.jobs_traversed - self.jobs_applied,
-                "NaukriDotCom"
-            )
+            self.driver.get(self.link)
 
-        except TimeoutException:
-            print("ERROR: No job elements found!")
+        total_jobs_log(
+            self.all_jobs_count,
+            self.all_jobs_count,
+            self.jobs_applied,
+            self.jobs_traversed,
+            "NaukriDotCom"
+        )
 
     def dfs_job_traversal(self, articles, parent_tab, depth=1):
         """Recursively traverses job postings(DFS), applying jobs, limited depth."""
@@ -94,13 +102,14 @@ class NaukriDotComApply:
 
         for i, article in enumerate(articles):
             try:
-                original_tabs = set(self.driver.window_handles)
+                original_tabs = self.driver.window_handles
                 article.click()
+
                 WebDriverWait(self.driver, 5).until(
                     ec.number_of_windows_to_be(len(original_tabs) + 1))
 
                 new_tab = [
-                    tab for tab in set(self.driver.window_handles)
+                    tab for tab in self.driver.window_handles
                     if tab not in original_tabs
                 ][0]
                 self.driver.switch_to.window(new_tab)
@@ -117,8 +126,8 @@ class NaukriDotComApply:
                     )
                 self.apply_to_job()
 
-            except (TimeoutException, ElementClickInterceptedException) as e:
-                print(f"Error processing article {i} at depth {depth}: {e}")
+            except (TimeoutException, ElementClickInterceptedException):
+                print(f"Error on article {i} at depth {depth}: TimeoutException/ElementClickInterceptedException")
 
             self.driver.close()
             self.driver.switch_to.window(parent_tab)
@@ -133,7 +142,12 @@ class NaukriDotComApply:
                     (By.CSS_SELECTOR, "article")
                 )
             )
-            return set(articles[0:self.apply_target])
+            filtered_articles = []
+            for article in articles[0:min(self.apply_target, len(articles))]:
+                if article not in self.all_articles:
+                    filtered_articles.append(article)
+            return filtered_articles
+
         except TimeoutException:
             print("ERROR: No job articles found!")
             return []
@@ -151,14 +165,32 @@ class NaukriDotComApply:
                     (By.XPATH,
                      '//button[contains(@id, "apply-button") and contains(text(), "Apply")]')
                 )).click()
+
+            try:
+                WebDriverWait(self.driver, 1).until(ec.presence_of_element_located(
+                    (By.XPATH,
+                     '//span[contains(text(), "There was an error while '
+                     'processing your request, please try again later")]')
+                ))
+                self.job_apply_failed_count += 1
+                if self.job_apply_failed_count >= MAXIMUM_TRIES:
+                    print("ERROR: Maximum job apply error count reached! Please try again after some time.")
+                    exit(0)
+            except NoSuchElementException:
+                pass
+
             try:
                 WebDriverWait(self.driver, 2).until(
                     ec.staleness_of(reference_element)
                 )
-                print(f"Successfully applied for {self.job_info["job_position"]} at {self.job_info["company_name"]}.")
+                print(f'Successfully applied for {self.job_info["job_position"]} at {self.job_info["company_name"]}.')
                 log_applied_job(self.job_info, "Naukridotcom")
                 self.jobs_applied += 1
+
             except (TimeoutException, NoSuchElementException):
+                model = QuestionAnsweringModel(True)
+                naukri_apply = NaukriDotComExtractAndFill(self.driver, model)
+                naukri_apply.parse_questions_and_answers()
                 self.jobs_traversed += 1
                 print("ERROR: This job requires additional answers!.")
 
@@ -179,7 +211,7 @@ class NaukriDotComApply:
             try:
                 info = WebDriverWait(self.driver, 1).until(
                     ec.presence_of_element_located((By.CSS_SELECTOR, path))
-                    ).text
+                ).text
             except TimeoutException:
                 info = None
             self.job_info[info_name] = info
@@ -201,5 +233,5 @@ if __name__ == "__main__":
     web_driver = webdriver.Chrome(options=chrome_options)
     web_driver.maximize_window()
 
-    n = NaukriDotComApply(web_driver, 14)
+    n = NaukriDotComApply(web_driver)
     n.apply_recommended_jobs()

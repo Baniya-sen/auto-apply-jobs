@@ -237,5 +237,5 @@ if __name__ == "__main__":
 
     model_qa = QuestionAnsweringModel(True)
 
-    n = NaukriDotComApply(web_driver, model_qa)
-    n.apply_recommended_jobs()
+    n = NaukriDotComApply(web_driver, model_qa, link="https://www.naukri.com/job-listings-business-analyst-incanus-technologies-hyderabad-bengaluru-delhi-ncr-0-to-4-years-260324004513?src=simJobDeskACP&sid=17295877550795470&xp=3&px=1")
+    n.apply_to_job()

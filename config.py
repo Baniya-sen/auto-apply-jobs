@@ -10,13 +10,23 @@ TOTAL_JOBS_LOG_PATH = path.abspath("logs/total_jobs_log.csv")
 # Default answers to basic questions
 DEFAULT_ANSWERS = {
     "First name": "Bhanu",
+    "Middle name": "",
     "Last name": "Pratap",
+    "Gender": "Male",
     "Email address": "bhanugupta421.bg@gmail.com",
     "Phone country code": "India (+91)",
     "Mobile phone number": 9873173896,
+    "State": "Haryana",
     "Location (city)": "Faridabad, Haryana, India",
     "City": "Faridabad, Haryana, India",
     "Address": "Faridabad, Haryana, India",
+    "Specialization": "Python, Data Analysis, Visualization, Backend, Development",
+    "Highest Qualification": "MCA",
+    "Class 12": 55,
+    "Class 10": 50,
+    "UG": 6.7,
+    "PG": 7.7,
+    "rate": 4,
 }
 
 # Default number of job apply target and log headers

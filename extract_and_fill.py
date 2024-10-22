@@ -185,17 +185,21 @@ class NaukriDotComExtractAndFill:
         try:
             ul_element = question_element.find_element(By.XPATH, "..")
             answer_element = ul_element.find_element(By.XPATH, "following-sibling::*")
-
-            if input_div := answer_element.find_element(By.CSS_SELECTOR, 'div.textArea'):
-                self._fill_input_text(input_div, question_element.text.strip())
-
-            elif radio_div := answer_element.find_element(By.CSS_SELECTOR, 'div.singleselect-radiobutton'):
-                self._fill_input_text(radio_div, question_element.text.strip())
-
         except NoSuchElementException:
             print("ERROR: No following sibling element found!")
+            answer_element = None
 
-    def _fill_input_text(self, input_element, question) -> None:
+        if answer_element:
+            if input_div := answer_element.find_elements(By.CSS_SELECTOR, 'div.textArea'):
+                self._fill_input_div(input_div[0], question_element.text.strip())
+
+            elif radio_div := answer_element.find_elements(By.CSS_SELECTOR, 'div.singleselect-radiobutton-container'):
+                self._fill_radio(radio_div[0], question_element.text.strip())
+
+            elif input_text := answer_element.find_elements(By.XPATH, '//input[@type="text"]'):
+                self._fill_input_text(input_text[0], answer_element, question_element.text.strip())
+
+    def _fill_input_div(self, input_element, question) -> None:
         question_text = clean_text(question)
         answer = self._get_answer_from_model(question_text)
 
@@ -208,27 +212,43 @@ class NaukriDotComExtractAndFill:
 
     def _fill_radio(self, radio_element, question) -> None:
         try:
-            radio_buttons_divs = radio_element.find_elements(By.CSS_SELECTOR, 'div.ssrc__radio-btn-container')
-            radio_buttons = radio_buttons_divs.find_elements(By.XPATH, '//input[@type="radio"]')
-            options = radio_buttons_divs.find_elements(By.XPATH, '//input')
-            options = [opt.text.strip() for opt in options]
+            radio_buttons_divs = radio_element.find_element(By.CSS_SELECTOR, 'div.ssrc__radio-btn-container')
+            options = radio_buttons_divs.find_elements(By.XPATH, './/label')
+            options_text = [opt.text.strip() for opt in options]
             answer = self._get_answer_from_model(clean_text(question))
 
-            if answer not in options:
+            if answer not in options_text:
                 print(f"No valid answer for radio '{question}', selecting first option.")
-                radio_buttons[1].click()
+                options[0].click()
             else:
-                for radio, label in zip(radio_buttons, options):
+                for option, label in zip(options, options_text):
                     if label == answer:
-                        radio.click()
+                        option.click()
                         break
 
         except NoSuchElementException:
             print(f"Error: Could not find radio buttons in section: {radio_element}")
 
-    def _get_answer_from_model(self, question) -> str:
-        answer = DEFAULT_ANSWERS.get(question)
-        if not answer:
-            answer = self.model.ask_question(question)
+    def _fill_input_text(self, answer_element, input_element, question) -> None:
+        question_text = clean_text(question)
+        answer = self._get_answer_from_model(question_text)
+        suggestions = input_element.find_elements(By.CSS_SELECTOR, 'div.ssc__wrapper')
+        suggestions_text = [suggest.text.strip() for suggest in suggestions]
 
-        return answer
+        if answer in suggestions_text:
+            answer_element.clear()
+            answer_element.send_keys(answer)
+            for suggest in suggestions:
+                if suggest.text.strip() == answer:
+                    suggest.click()
+                    break
+        else:
+            answer_element.send_keys("")
+            suggestions[0].click()
+
+    def _get_answer_from_model(self, question) -> str:
+        for k, v in DEFAULT_ANSWERS.items():
+            if k.lower() in question.lower():
+                return DEFAULT_ANSWERS[k]
+
+        return self.model.ask_question(question)

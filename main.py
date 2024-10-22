@@ -49,7 +49,7 @@ def prerequisites():
         model_training = QAModelCustom()
         model_training.train_model(num_train_epochs=35)
         model_training.save_model(save_path=FINE_TUNED_MODEL_PATH)
-        print("Model trained and saved.")
+        print("SUCCESS: Model trained and saved.")
 
 
 def main():
@@ -63,8 +63,8 @@ def main():
     qa_model = QuestionAnsweringModel(USE_FT_MODEL)
 
     try:
-        # linkedin_apply = LinkedInApply(driver=web_driver, model=qa_model)
-        # linkedin_apply.easy_apply_to_jobs()
+        linkedin_apply = LinkedInApply(driver=web_driver, model=qa_model)
+        linkedin_apply.easy_apply_to_jobs()
 
         # linkedin_single_apply = LinkedInApply(
         #     web_driver,

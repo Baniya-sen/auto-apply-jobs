@@ -343,3 +343,12 @@
 """
 <section class="styles_user-msg__YLRsE styles_error__PZ5op"><i class="styles_user-msg-icon-error__kduoH ni-icon-error"></i><span>There was an error while processing your request, please try again later</span></section>
 """
+
+
+
+
+"""
+<div id="sendMsg__db43pqpxiInputBox" class="send">
+    <div class="sendMsg" tabindex="0">Save</div>
+</div>
+"""

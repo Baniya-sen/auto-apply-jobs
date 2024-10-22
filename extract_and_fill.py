@@ -1,4 +1,5 @@
 import re
+import time
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
@@ -149,16 +150,85 @@ class NaukriDotComExtractAndFill:
     def parse_questions_and_answers(self) -> None:
         """Find and extract job-related form elements"""
         try:
-            chat_box_dialog = WebDriverWait(self.driver, 10).until(
-                ec.presence_of_element_located(
-                    (By.CSS_SELECTOR, 'div.chatbot_DrawerContentWrapper')
-                ))
-            question_elements = WebDriverWait(chat_box_dialog, 10).until(
-                ec.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR, 'li.botItem.chatbot_ListItem')
-                ))
-            for question in question_elements:
-                print(question.text.strip())
+            while True:
+                chat_box_dialog = WebDriverWait(self.driver, 10).until(
+                    ec.presence_of_element_located(
+                        (By.CSS_SELECTOR, 'div.chatbot_DrawerContentWrapper')
+                    ))
+                question_element = WebDriverWait(chat_box_dialog, 10).until(
+                    ec.presence_of_all_elements_located(
+                        (By.CSS_SELECTOR, 'li.botItem.chatbot_ListItem')
+                    ))[-1]
+
+                print(question_element.text.strip())
+                self._find_input_type_and_fill(question_element)
+
+                try:
+                    WebDriverWait(self.driver, 2).until(
+                        ec.element_to_be_clickable((
+                            By.CSS_SELECTOR, "div.send div.sendMsg"
+                        ))).click()
+                except (TimeoutException, NoSuchElementException):
+                    continue
+
+                try:
+                    WebDriverWait(self.driver, 10).until(
+                        ec.staleness_of(chat_box_dialog))
+                    break
+                except (TimeoutException, NoSuchElementException):
+                    pass
 
         except TimeoutException:
             print("No dialog box/questions section found!")
+
+    def _find_input_type_and_fill(self, question_element):
+        try:
+            ul_element = question_element.find_element(By.XPATH, "..")
+            answer_element = ul_element.find_element(By.XPATH, "following-sibling::*")
+
+            if input_div := answer_element.find_element(By.CSS_SELECTOR, 'div.textArea'):
+                self._fill_input_text(input_div, question_element.text.strip())
+
+            elif radio_div := answer_element.find_element(By.CSS_SELECTOR, 'div.singleselect-radiobutton'):
+                self._fill_input_text(radio_div, question_element.text.strip())
+
+        except NoSuchElementException:
+            print("ERROR: No following sibling element found!")
+
+    def _fill_input_text(self, input_element, question) -> None:
+        question_text = clean_text(question)
+        answer = self._get_answer_from_model(question_text)
+
+        if str(answer).isalnum():
+            input_element.clear()
+            input_element.send_keys(answer)
+        else:
+            input_element.clear()
+            input_element.send_keys(0)
+
+    def _fill_radio(self, radio_element, question) -> None:
+        try:
+            radio_buttons_divs = radio_element.find_elements(By.CSS_SELECTOR, 'div.ssrc__radio-btn-container')
+            radio_buttons = radio_buttons_divs.find_elements(By.XPATH, '//input[@type="radio"]')
+            options = radio_buttons_divs.find_elements(By.XPATH, '//input')
+            options = [opt.text.strip() for opt in options]
+            answer = self._get_answer_from_model(clean_text(question))
+
+            if answer not in options:
+                print(f"No valid answer for radio '{question}', selecting first option.")
+                radio_buttons[1].click()
+            else:
+                for radio, label in zip(radio_buttons, options):
+                    if label == answer:
+                        radio.click()
+                        break
+
+        except NoSuchElementException:
+            print(f"Error: Could not find radio buttons in section: {radio_element}")
+
+    def _get_answer_from_model(self, question) -> str:
+        answer = DEFAULT_ANSWERS.get(question)
+        if not answer:
+            answer = self.model.ask_question(question)
+
+        return answer

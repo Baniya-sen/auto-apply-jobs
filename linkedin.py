@@ -149,16 +149,15 @@ class LinkedInApply:
                 if self._get_prompt_reference():
                     self._get_additional_questions_and_answer()
                     attempted += 1
+                    if attempted >= 7:
+                        raise TimeoutException
 
                 self.driver.execute_script("arguments[0].scrollIntoView(true);", continue_button)
                 continue_button.click()
 
-            except TimeoutException:
-                if attempted == 7:
-                    print("ERROR: Application could not be pass!")
-                    self._close_apply_dialog_box()
-                    return False
-            except ElementClickInterceptedException:
+            except (TimeoutException, ElementClickInterceptedException):
+                print("ERROR: Application could not be pass!")
+                self._close_apply_dialog_box()
                 return False
 
     def _apply_button_click(self) -> bool:

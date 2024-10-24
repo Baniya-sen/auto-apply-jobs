@@ -76,6 +76,13 @@ def main():
         naukri_apply = NaukriDotComApply(driver=web_driver, model=qa_model)
         naukri_apply.apply_recommended_jobs()
 
+        # naukri_single_apply = NaukriDotComApply(
+        #     driver=web_driver,
+        #     model=qa_model,
+        #     link="",
+        # )
+        # naukri_single_apply.apply_to_job()
+
     finally:
         web_driver.quit()
 

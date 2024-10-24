@@ -1,5 +1,4 @@
 import re
-import time
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
@@ -146,48 +145,54 @@ class NaukriDotComExtractAndFill:
         """Extract NaukriDotCom questions and options and fill inputs using Selenium"""
         self.driver = driver
         self.model = model
+        self.fill_answer_try_count = 0
 
-    def parse_questions_and_answers(self) -> None:
-        """Find and extract job-related form elements"""
+    def parse_questions_and_answers(self) -> bool:
+        """Extract and fill job-related form elements in the chatbot interface."""
+        self.fill_answer_try_count = 0
+
         try:
-            while True:
-                chat_box_dialog = WebDriverWait(self.driver, 10).until(
-                    ec.presence_of_element_located(
-                        (By.CSS_SELECTOR, 'div.chatbot_DrawerContentWrapper')
-                    ))
-                question_element = WebDriverWait(chat_box_dialog, 10).until(
-                    ec.presence_of_all_elements_located(
-                        (By.CSS_SELECTOR, 'li.botItem.chatbot_ListItem')
-                    ))[-1]
+            while self.fill_answer_try_count < 11:
+                chat_box_dialog = WebDriverWait(self.driver, 5).until(
+                    ec.presence_of_element_located((By.CSS_SELECTOR, 'div.chatbot_DrawerContentWrapper'))
+                )
+                question_element = WebDriverWait(chat_box_dialog, 5).until(
+                    ec.presence_of_all_elements_located((By.CSS_SELECTOR, 'li.botItem.chatbot_ListItem'))
+                )[-1]
 
-                print(question_element.text.strip())
+                if question_element.text.strip() == "Thankyou for your responses.":
+                    try:
+                        WebDriverWait(self.driver, 3).until(ec.staleness_of(chat_box_dialog))
+                        return True
+                    except TimeoutException:
+                        pass
+
                 self._find_input_type_and_fill(question_element)
 
                 try:
-                    WebDriverWait(self.driver, 2).until(
-                        ec.element_to_be_clickable((
-                            By.CSS_SELECTOR, "div.send div.sendMsg"
-                        ))).click()
+                    WebDriverWait(self.driver, 5).until(
+                        ec.element_to_be_clickable((By.CSS_SELECTOR, "div.send div.sendMsg"))
+                    ).click()
                 except (TimeoutException, NoSuchElementException):
+                    self.fill_answer_try_count += 1
                     continue
 
-                try:
-                    WebDriverWait(self.driver, 10).until(
-                        ec.staleness_of(chat_box_dialog))
-                    break
-                except (TimeoutException, NoSuchElementException):
-                    pass
-
         except TimeoutException:
-            print("No dialog box/questions section found!")
+            print("ERROR: No chatbot dialog or question section found!")
+        except IndexError:
+            return False
 
-    def _find_input_type_and_fill(self, question_element):
+        return False
+
+    def _find_input_type_and_fill(self, question_element) -> None:
         try:
             ul_element = question_element.find_element(By.XPATH, "..")
             answer_element = ul_element.find_element(By.XPATH, "following-sibling::*")
         except NoSuchElementException:
             print("ERROR: No following sibling element found!")
             answer_element = None
+
+        self.fill_answer_try_count += 1
 
         if answer_element:
             if input_div := answer_element.find_elements(By.CSS_SELECTOR, 'div.textArea'):

@@ -255,7 +255,7 @@ class LinkedInApply:
             except TimeoutException:
                 pass
 
-        if info_text in {"Resume", "Education"}:
+        if info_text == "Education":
             return False
         elif info_text == "Work experience":
             try:
@@ -305,3 +305,7 @@ class LinkedInApply:
                 ElementClickInterceptedException, StaleElementReferenceException):
             print("ERROR: Application could not be disposed!")
             pass
+
+
+"What currency are your expectations and current salary in?What currency are your expectations and current salary in?"
+"English LevelEnglish Level"

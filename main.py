@@ -69,7 +69,7 @@ def main():
         # linkedin_single_apply = LinkedInApply(
         #     web_driver,
         #     qa_model,
-        #     "https://www.linkedin.com/jobs/view/4026655076"
+        #     "https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4056388874"
         # )
         # linkedin_single_apply.easy_apply_single_job()
 

@@ -5,7 +5,6 @@ from tensorflow import compat
 from torch import device, cuda
 from transformers import pipeline
 from transformers import T5ForConditionalGeneration, T5Tokenizer
-from sklearn.metrics import accuracy_score
 
 from config import SUMMARY_TEXT
 from config import FINE_TUNED_MODEL_PATH
@@ -75,61 +74,3 @@ class QuestionAnsweringModel:
                 answers_list.append("")
 
         return answers_list
-
-
-# Example usage
-# if __name__ == "__main__":
-#     questions = [
-#         "Experience with RESTful API development and integration? ",
-#         "Knowledge of Web scrapping libraries like beautiful soup etc? ",
-#         "Strong knowledge of Python and its libraries (NumPy, Pandas, Scikit-Learn, TensorFlow, PyTorch)? ",
-#         "NumPy, Pandas, Scikit-Learn, TensorFlow, PyTorch?",
-#         "Proven experience in SaaS environments? ",
-#         "How many years of work experience do you have in Python?",
-#         "How many years of work experience do you have with Google Cloud Platform (GCP)?",
-#         "What is your current yearly CTC",
-#         "What is your current notice period ?",
-#         "How many years of work experience do you have with Looker (Software)?",
-#         "How many years of work experience you have in Service Now?",
-#         "experience in Python",
-#         "Are you familiar with Scikit-Learn?",
-#         "Are you open to Unpaid Internship?",
-#         "Do you have experience in Numpy?",
-#         "Expected yearly salary?",
-#         "Do you have experience in Azure?",
-#         "Can you work in a remote setting",
-#         "How will you rate yourself in Python from 1-5?",
-#         "Can you commute to this jon location?",
-#         "How much experience you have in ETL?",
-#         "How many years of experience do you have with Python?"
-#         "How many years of experience do you have in Django?",
-#         "How many years of work experience do you have in Django?",
-#         "Expected yearly salary?",
-#         "What is your current CTC?",
-#         "Your notice period?",
-#         "Do you have experience with Amazon Web Services?",
-#         "Do you have work experience with Amazon Web Services?",
-#         "How many years of experience you have with Microsoft Azure?",
-#         "How many years of work experience you have with Microsoft Azure?",
-#         "How many years of work experience do you have with Node.js?",
-#         "How many years of experience do you have with React.js?",
-#     ]
-#
-#     answers_true = ["Yes", "Yes", "Yes,", "Yes", "No", "4", "1", "0",
-#                     "0", "0", "0", "Yes", "Yes", "No", "Yes", "350000",
-#                     "Yes", "Yes", "4", "Yes", "1", "4", "1", "1", "350000",
-#                     "0", "0", "Yes", "Yes" "1", "1", "0", "0"]
-#
-#     # print(len(questions))
-#     # print(len(answers_true))
-#
-#     indices = random.sample(range(len(questions)), 10)
-#     selected_list1 = [questions[i] for i in indices]
-#     selected_list2 = [answers_true[i] for i in indices]
-#
-    # model = QuestionAnsweringModel(True)
-    # answers_pred = model.ask_multiple_questions(questions)
-#     answers_pred_rand = model.ask_multiple_questions(selected_list1)
-#
-#     print("\nThe all ques accuracy is " + str(accuracy_score(answers_true, answers_pred)) + "%")
-#     print("The random ques accuracy is " + str(accuracy_score(selected_list2, answers_pred_rand)) + "%")

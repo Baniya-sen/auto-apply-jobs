@@ -85,9 +85,9 @@ class NaukriDotComApply:
             except TimeoutException:
                 print("ERROR: No job elements found!")
                 break
-            except Exception as e:
-                print(e)
-                break
+            # except Exception as e:
+            #     print(e)
+            #     break
 
         total_jobs_log(
             self.all_jobs_count,

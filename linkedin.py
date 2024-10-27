@@ -255,7 +255,14 @@ class LinkedInApply:
             except TimeoutException:
                 pass
 
-        if info_text == "Education":
+        if info_text == "Resume":
+            try:
+                self.driver.find_element(By.XPATH, './/input')
+                return True
+            except NoSuchElementException:
+                pass
+            return False
+        elif info_text == "Education":
             return False
         elif info_text == "Work experience":
             try:

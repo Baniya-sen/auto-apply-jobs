@@ -30,7 +30,7 @@ DEFAULT_ANSWERS = {
 }
 
 # Default number of job apply target and log headers
-JOB_APPLY_TARGET = 50
+JOB_APPLY_TARGET = 60
 JOB_LOG_HEADERS = ["Job Title", "Company Name", "Experience", "Salary", "Location",
                    "Date Applied", "Time Applied", "Day", "Month", "Year", "Job Site"]
 TOTAL_JOBS_LOG_HEADERS = ["Date", "Jobs Extracted", "Job Traversed", "Job Applied", "Jobs Saved", "Site"]

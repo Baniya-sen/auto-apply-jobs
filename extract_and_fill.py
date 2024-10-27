@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException
 
 from config import DEFAULT_ANSWERS
 from model import QuestionAnsweringModel
@@ -39,7 +40,7 @@ class LinkedInExtractAndFill:
                     (By.CLASS_NAME, 'jobs-easy-apply-form-section__grouping')
                 ))
         except TimeoutException:
-            print("No questions section found!")
+            print("ERROR: No questions section found!")
 
         if sections:
             for section in sections:
@@ -161,10 +162,11 @@ class NaukriDotComExtractAndFill:
                 )[-1]
 
                 if question_element.text.strip() == "Thankyou for your responses.":
+                    print(question_element.text.strip())
                     try:
                         WebDriverWait(self.driver, 3).until(ec.staleness_of(chat_box_dialog))
                         return True
-                    except TimeoutException:
+                    except (TimeoutException, StaleElementReferenceException):
                         pass
 
                 self._find_input_type_and_fill(question_element)

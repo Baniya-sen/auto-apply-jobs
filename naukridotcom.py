@@ -63,6 +63,12 @@ class NaukriDotComApply:
 
     def apply_recommended_jobs(self) -> None:
         """Extracts limited job postings from the recommended job page."""
+        # WebDriverWait(self.driver, 5).until(
+        #     ec.element_to_be_clickable(
+        #         (By.CSS_SELECTOR, "div.recommended-jobs-page div#profile")
+        #     )
+        # ).click()
+
         while JOB_APPLY_TARGET >= self.jobs_applied:
             jobs_css_pass = ("div.recommended-jobs-page div.list article"
                              if self.link == DEFAULT_LINK else "article")

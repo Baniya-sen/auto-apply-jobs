@@ -1,4 +1,5 @@
 import re
+import time
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
@@ -40,7 +41,7 @@ class LinkedInExtractAndFill:
                     (By.CLASS_NAME, 'jobs-easy-apply-form-section__grouping')
                 ))
         except TimeoutException:
-            print("ERROR: No questions section found!")
+            pass
 
         if sections:
             for section in sections:
@@ -151,6 +152,8 @@ class NaukriDotComExtractAndFill:
     def parse_questions_and_answers(self) -> bool:
         """Extract and fill job-related form elements in the chatbot interface."""
         self.fill_answer_try_count = 0
+        li_locator = (By.CSS_SELECTOR, 'li.botItem.chatbot_ListItem')
+        initial_li_count = 0
 
         try:
             while self.fill_answer_try_count < 11:
@@ -158,10 +161,16 @@ class NaukriDotComExtractAndFill:
                     ec.presence_of_element_located((By.CSS_SELECTOR, 'div.chatbot_DrawerContentWrapper'))
                 )
                 question_element = WebDriverWait(chat_box_dialog, 5).until(
-                    ec.presence_of_all_elements_located((By.CSS_SELECTOR, 'li.botItem.chatbot_ListItem'))
-                )[-1]
+                    ec.presence_of_all_elements_located(li_locator)
+                )
+                initial_li_count = len(question_element)
+                print(initial_li_count)
+                question_element = question_element[-1]
 
-                if question_element.text.strip() == "Thankyou for your responses.":
+                norm_ques = re.sub(r'[^a-zA-Z]', '', question_element.text.strip()).lower()
+                norm_target = re.sub(r'[^a-zA-Z]', '', "Thank you for your responses.").lower()
+
+                if norm_ques == norm_target:
                     print(question_element.text.strip())
                     try:
                         WebDriverWait(self.driver, 3).until(ec.staleness_of(chat_box_dialog))
@@ -179,10 +188,14 @@ class NaukriDotComExtractAndFill:
                     self.fill_answer_try_count += 1
                     continue
 
-        except TimeoutException:
-            print("ERROR: No chatbot dialog or question section found!")
-        except IndexError:
-            return False
+                WebDriverWait(self.driver, 5).until(
+                    lambda d: len(d.find_elements(*li_locator)) == initial_li_count + 1
+                )
+                print("2nd", initial_li_count+1)
+        #         STILL SAME ERROR ON INPUT ELEMENT: StaleElementReferenceException
+
+        except (TimeoutException, IndexError):
+            pass
 
         return False
 
@@ -191,7 +204,6 @@ class NaukriDotComExtractAndFill:
             ul_element = question_element.find_element(By.XPATH, "..")
             answer_element = ul_element.find_element(By.XPATH, "following-sibling::*")
         except NoSuchElementException:
-            print("ERROR: No following sibling element found!")
             answer_element = None
 
         self.fill_answer_try_count += 1
@@ -225,7 +237,6 @@ class NaukriDotComExtractAndFill:
             answer = self._get_answer_from_model(clean_text(question))
 
             if answer not in options_text:
-                print(f"No valid answer for radio '{question}', selecting first option.")
                 options[0].click()
             else:
                 for option, label in zip(options, options_text):
@@ -237,21 +248,25 @@ class NaukriDotComExtractAndFill:
             print(f"Error: Could not find radio buttons in section: {radio_element}")
 
     def _fill_input_text(self, answer_element, input_element, question) -> None:
-        question_text = clean_text(question)
-        answer = self._get_answer_from_model(question_text)
-        suggestions = input_element.find_elements(By.CSS_SELECTOR, 'div.ssc__wrapper')
-        suggestions_text = [suggest.text.strip() for suggest in suggestions]
+        try:
+            question_text = clean_text(question)
+            answer = self._get_answer_from_model(question_text)
+            suggestions = input_element.find_elements(By.CSS_SELECTOR, 'div.ssc__wrapper')
+            suggestions_text = [suggest.text.strip() for suggest in suggestions]
 
-        if answer in suggestions_text:
-            answer_element.clear()
-            answer_element.send_keys(answer)
-            for suggest in suggestions:
-                if suggest.text.strip() == answer:
-                    suggest.click()
-                    break
-        else:
-            answer_element.send_keys("")
-            suggestions[0].click()
+            if answer in suggestions_text:
+                answer_element.clear()
+                answer_element.send_keys(answer)
+                for suggest in suggestions:
+                    if suggest.text.strip() == answer:
+                        suggest.click()
+                        break
+            else:
+                answer_element.send_keys("")
+                suggestions[0].click()
+
+        except NoSuchElementException:
+            print(f"Error: Could not find suggestions in input: {input_element}")
 
     def _get_answer_from_model(self, question) -> str:
         for k, v in DEFAULT_ANSWERS.items():

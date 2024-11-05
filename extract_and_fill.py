@@ -7,7 +7,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.common.exceptions import StaleElementReferenceException
 
 from config import DEFAULT_ANSWERS
 from model import QuestionAnsweringModel
@@ -73,7 +72,6 @@ class LinkedInExtractAndFill:
             answer = self._get_answer_from_model(clean_text(question_text))
 
             if answer not in options:
-                print(f"No valid answer for radio '{question_text}', selecting first option.")
                 radio_buttons[1].click()
             else:
                 for radio, label in zip(radio_buttons, options):
@@ -95,7 +93,6 @@ class LinkedInExtractAndFill:
 
             answer = self._get_answer_from_model(clean_text(question_text))
             if answer not in options:
-                print(f"No valid answer provided for select '{question_text}', choosing the first option.")
                 select_object.select_by_index(1)
             else:
                 select_object.select_by_visible_text(answer)
@@ -132,7 +129,7 @@ class LinkedInExtractAndFill:
             )
             dialog_element.click()
         except NoSuchElementException:
-            print("Warning: Could not find element to click. Dropdown remain open.")
+            print("Warning: Could not find predefined element to click to hide dropdown.")
 
     def _get_answer_from_model(self, question) -> str:
         answer = DEFAULT_ANSWERS.get(question)
@@ -151,34 +148,25 @@ class NaukriDotComExtractAndFill:
 
     def parse_questions_and_answers(self) -> bool:
         """Extract and fill job-related form elements in the chatbot interface."""
-        self.fill_answer_try_count = 0
         li_locator = (By.CSS_SELECTOR, 'li.botItem.chatbot_ListItem')
-        initial_li_count = 0
+        self.fill_answer_try_count = 0
 
         try:
             while self.fill_answer_try_count < 11:
                 chat_box_dialog = WebDriverWait(self.driver, 5).until(
                     ec.presence_of_element_located((By.CSS_SELECTOR, 'div.chatbot_DrawerContentWrapper'))
                 )
-                question_element = WebDriverWait(chat_box_dialog, 5).until(
+                questions = WebDriverWait(chat_box_dialog, 5).until(
                     ec.presence_of_all_elements_located(li_locator)
                 )
-                initial_li_count = len(question_element)
-                print(initial_li_count)
-                question_element = question_element[-1]
+                initial_li_count = len(questions)
+                last_question = questions[-1]
 
-                norm_ques = re.sub(r'[^a-zA-Z]', '', question_element.text.strip()).lower()
-                norm_target = re.sub(r'[^a-zA-Z]', '', "Thank you for your responses.").lower()
-
-                if norm_ques == norm_target:
-                    print(question_element.text.strip())
-                    try:
-                        WebDriverWait(self.driver, 3).until(ec.staleness_of(chat_box_dialog))
+                if not last_question.text.strip():
+                    if WebDriverWait(self.driver, 3).until(ec.staleness_of(chat_box_dialog)):
                         return True
-                    except (TimeoutException, StaleElementReferenceException):
-                        pass
 
-                self._find_input_type_and_fill(question_element)
+                self._find_input_type_and_fill(last_question)
 
                 try:
                     WebDriverWait(self.driver, 5).until(
@@ -191,8 +179,7 @@ class NaukriDotComExtractAndFill:
                 WebDriverWait(self.driver, 5).until(
                     lambda d: len(d.find_elements(*li_locator)) == initial_li_count + 1
                 )
-                print("2nd", initial_li_count+1)
-        #         STILL SAME ERROR ON INPUT ELEMENT: StaleElementReferenceException
+                time.sleep(2)
 
         except (TimeoutException, IndexError):
             pass

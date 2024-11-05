@@ -1,3 +1,5 @@
+# Python 3.12
+
 import csv
 from os import path, makedirs, listdir
 
@@ -52,6 +54,24 @@ def prerequisites():
         print("SUCCESS: Model trained and saved.")
 
 
+def linkedin_job_apply(driver: webdriver, model: QuestionAnsweringModel, link=None) -> None:
+    if not link:
+        linkedin_apply = LinkedInApply(driver=driver, model=model)
+        linkedin_apply.easy_apply_to_jobs()
+    else:
+        linkedin_single_apply = LinkedInApply(driver, model, link)
+        linkedin_single_apply.easy_apply_single_job()
+
+
+def naukridotcom_job_apply(driver: webdriver, model: QuestionAnsweringModel, link=None) -> None:
+    if not link:
+        naukri_apply = NaukriDotComApply(driver=driver, model=model)
+        naukri_apply.apply_recommended_jobs()
+    else:
+        naukri_single_apply = NaukriDotComApply(driver, model, link,)
+        naukri_single_apply.apply_to_job()
+
+
 def main():
     prerequisites()
 
@@ -63,26 +83,8 @@ def main():
     qa_model = QuestionAnsweringModel(USE_FT_MODEL)
 
     try:
-        # linkedin_apply = LinkedInApply(driver=web_driver, model=qa_model)
-        # linkedin_apply.easy_apply_to_jobs()
-
-        # linkedin_single_apply = LinkedInApply(
-        #     web_driver,
-        #     qa_model,
-        #     "https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4056388874"
-        # )
-        # linkedin_single_apply.easy_apply_single_job()
-
-        naukri_apply = NaukriDotComApply(driver=web_driver, model=qa_model)
-        naukri_apply.apply_recommended_jobs()
-
-        # naukri_single_apply = NaukriDotComApply(
-        #     driver=web_driver,
-        #     model=qa_model,
-        #     link="",
-        # )
-        # naukri_single_apply.apply_to_job()
-
+        linkedin_job_apply(web_driver, qa_model)
+        naukridotcom_job_apply(web_driver, qa_model)
     finally:
         web_driver.quit()
 

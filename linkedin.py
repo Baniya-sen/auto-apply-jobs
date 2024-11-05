@@ -47,8 +47,10 @@ class LinkedInApply:
             except TimeoutException:
                 pass
 
-        while not logged_in:
+        if not logged_in:
             print("ERROR: You are not logged-in!")
+
+        while not logged_in:
             page_state = self.driver.execute_script('return document.readyState;')
             if page_state == 'complete':
                 if (self.link in self.driver.current_url
@@ -70,7 +72,7 @@ class LinkedInApply:
                         if self.easy_apply_single_job(job.text):
                             self.jobs_traversed += 1
                     except (ElementClickInterceptedException, StaleElementReferenceException):
-                        print("ERROR: Failed click due to overlay / Element is stale.\n")
+                        print("ERROR: Failed to click due to an overlay OR Element is stale. Reloading.\n")
                         break
 
                 self.driver.get(self.link)
@@ -156,7 +158,7 @@ class LinkedInApply:
                 continue_button.click()
 
             except (TimeoutException, ElementClickInterceptedException):
-                print("ERROR: Application could not be pass!")
+                print(f"ERROR: Application '{self.job_info['job_position']}' could not be pass! Disposing.")
                 self._close_apply_dialog_box()
                 return False
 
@@ -175,7 +177,7 @@ class LinkedInApply:
                 apply_button_clicked = True
                 break
             except TimeoutException:
-                print("ERROR: Easy Apply button not found!")
+                print("ERROR: Easy Apply button not found! Checking another path!")
 
         # LinkedIn's "Job search safety reminder" dialog-box check and close
         if apply_button_clicked:
@@ -216,7 +218,7 @@ class LinkedInApply:
                      ' and contains(@class, "artdeco-modal")]')
                 ))
         except TimeoutException:
-            print("ERROR: Apply dialog box not found!")
+            print("ERROR: Apply dialog box not found after clicking apply button! Skipping.")
             self.apply_dialog_box = None
 
     def _close_submitted_dialog_box(self) -> None:
@@ -236,7 +238,6 @@ class LinkedInApply:
                 )).click()  # THIS IS ElementClickInterceptedException PROBLEM
         except (TimeoutException, InvalidSelectorException,
                 ElementClickInterceptedException, StaleElementReferenceException):
-            print("ERROR: Submit successful close-box not found!")
             pass
 
     def _get_prompt_reference(self) -> bool:
@@ -279,12 +280,8 @@ class LinkedInApply:
 
     def _get_additional_questions_and_answer(self) -> None:
         """Extract questions and its type if the form requires additional info"""
-        try:
-            extractor = LinkedInExtractAndFill(self.driver, self.model)
-            extractor.parse_questions_and_answers()
-
-        except Exception as e:
-            print("INFO: No additional questions dialog-box element found!", e)
+        extractor = LinkedInExtractAndFill(self.driver, self.model)
+        extractor.parse_questions_and_answers()
 
     def _close_apply_dialog_box(self) -> None:
         """Click on close button of application form and discards it"""
@@ -306,13 +303,7 @@ class LinkedInApply:
                      '//button[@data-control-name="discard_application_confirm_btn"'
                      ' and contains(@class, "artdeco-button")]')
                 )).click()
-            print("SUCCESS: Application disposed!", end="\n\n")
 
         except (TimeoutException, InvalidSelectorException,
                 ElementClickInterceptedException, StaleElementReferenceException):
-            print("ERROR: Application could not be disposed!")
             pass
-
-
-"What currency are your expectations and current salary in?What currency are your expectations and current salary in?"
-"English LevelEnglish Level"

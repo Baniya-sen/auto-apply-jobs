@@ -68,7 +68,6 @@ class QuestionAnsweringModel:
         for question in questions_list:
             if question:
                 answer = self.ask_question(question)
-                print(f"{question}: {answer}")
                 answers_list.append(answer)
             else:
                 answers_list.append("")

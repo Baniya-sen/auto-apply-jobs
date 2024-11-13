@@ -49,10 +49,8 @@ class NaukriDotComApply:
             except TimeoutException:
                 pass
 
-        if not logged_in:
-            print("ERROR: You are not logged-in!")
-
         while not logged_in:
+            print("ERROR: You are not logged-in!")
             page_state = self.driver.execute_script('return document.readyState;')
             if page_state == 'complete':
                 if self.link in self.driver.current_url:
@@ -82,11 +80,11 @@ class NaukriDotComApply:
                 self.driver.get(self.link)
 
             except TimeoutException:
-                print("ERROR: No job elements found! Exiting.")
+                print("ERROR: No job elements found!")
                 break
-            except Exception as e:
-                print("ERROR:", e)
-                break
+            # except Exception as e:
+            #     print(e)
+            #     break
 
         total_jobs_log(
             self.all_jobs_count,
@@ -127,7 +125,7 @@ class NaukriDotComApply:
                 self.apply_to_job()
 
             except (TimeoutException, ElementClickInterceptedException):
-                pass
+                print(f"ERROR: Article {i} at depth {depth}: TE/ECIE")
 
             self.driver.close()
             self.driver.switch_to.window(parent_tab)
@@ -150,6 +148,7 @@ class NaukriDotComApply:
             return filtered_articles
 
         except TimeoutException:
+            print("ERROR: No job articles found!")
             return []
 
     def apply_to_job(self) -> None:

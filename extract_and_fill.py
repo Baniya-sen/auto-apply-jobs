@@ -72,6 +72,7 @@ class LinkedInExtractAndFill:
             answer = self._get_answer_from_model(clean_text(question_text))
 
             if answer not in options:
+                print(f"No valid answer for radio '{question_text}', selecting first option.")
                 radio_buttons[1].click()
             else:
                 for radio, label in zip(radio_buttons, options):
@@ -93,6 +94,7 @@ class LinkedInExtractAndFill:
 
             answer = self._get_answer_from_model(clean_text(question_text))
             if answer not in options:
+                print(f"No valid answer provided for select '{question_text}', choosing the first option.")
                 select_object.select_by_index(1)
             else:
                 select_object.select_by_visible_text(answer)
@@ -129,7 +131,7 @@ class LinkedInExtractAndFill:
             )
             dialog_element.click()
         except NoSuchElementException:
-            print("Warning: Could not find predefined element to click to hide dropdown.")
+            print("Warning: Could not find element to click. Dropdown remain open.")
 
     def _get_answer_from_model(self, question) -> str:
         answer = DEFAULT_ANSWERS.get(question)
@@ -162,7 +164,8 @@ class NaukriDotComExtractAndFill:
                 initial_li_count = len(questions)
                 last_question = questions[-1]
 
-                if not last_question.text.strip():
+                norm_ques = re.sub(r'[^a-zA-Z]', '', last_question.text.strip()).lower()
+                if norm_ques == "thankyouforyourresponses":
                     if WebDriverWait(self.driver, 3).until(ec.staleness_of(chat_box_dialog)):
                         return True
 
@@ -179,7 +182,7 @@ class NaukriDotComExtractAndFill:
                 WebDriverWait(self.driver, 5).until(
                     lambda d: len(d.find_elements(*li_locator)) == initial_li_count + 1
                 )
-                time.sleep(2)
+                time.sleep(1)  # Wait for the next input div to load. Adjust accordingly.
 
         except (TimeoutException, IndexError):
             pass

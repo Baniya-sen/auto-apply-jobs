@@ -140,7 +140,7 @@ class LinkedInExtractAndFill:
     def _click_outside_to_hide_dropdown(self):
         """Click on a non-interactive area to close the suggestion dropdown."""
         try:
-            dialog_element = self.driver.find_element(
+            dialog_element = self.apply_box_element.find_element(
                 By.CSS_SELECTOR,
                 'div.artdeco-modal__header h2#jobs-apply-header'
             )

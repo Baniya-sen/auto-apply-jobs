@@ -25,21 +25,35 @@ def clean_text(text) -> str:
 
 
 class LinkedInExtractAndFill:
-    def __init__(self, driver: WebDriver, model: QuestionAnsweringModel) -> None:
+    def __init__(self, apply_box_element: WebElement, model: QuestionAnsweringModel) -> None:
         """Extract LinkedIn questions and options and fill inputs using Selenium"""
-        self.driver = driver
+        self.apply_box_element = apply_box_element
         self.model = model
+        self.valid_class_name = None
 
     def parse_questions_and_answers(self) -> None:
         """Find and extract job-related form elements using Selenium"""
         sections = None
-
         try:
-            sections = WebDriverWait(self.driver, 10).until(
-                ec.presence_of_all_elements_located(
-                    (By.CLASS_NAME, 'jobs-easy-apply-form-section__grouping')
-                ))
+            if not self.valid_class_name:
+                all_divs = WebDriverWait(self.apply_box_element, 5).until(
+                    ec.presence_of_all_elements_located((By.TAG_NAME, "div"))
+                )
+
+                class_count = {}
+                for div in all_divs:
+                    class_name = div.get_attribute("class").strip()
+                    if class_name and len(class_name) == 33:
+                        class_count[class_name] = class_count.get(class_name, 0) + 1
+
+                self.valid_class_name = next(
+                    (cls for cls, count in class_count.items() if count >= 2), None
+                )
+
+            sections = self.apply_box_element.find_elements(By.CLASS_NAME, self.valid_class_name)
+
         except TimeoutException:
+            self.valid_class_name = None
             pass
 
         if sections:

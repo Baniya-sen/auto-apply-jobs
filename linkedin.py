@@ -279,7 +279,7 @@ class LinkedInApply:
 
     def _get_additional_questions_and_answer(self) -> None:
         """Extract questions and its type if the form requires additional info"""
-        extractor = LinkedInExtractAndFill(self.driver, self.model)
+        extractor = LinkedInExtractAndFill(self.apply_dialog_box, self.model)
         extractor.parse_questions_and_answers()
 
     def _close_apply_dialog_box(self) -> None:

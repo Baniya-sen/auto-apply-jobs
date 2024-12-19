@@ -44,7 +44,7 @@ class LinkedInExtractAndFill:
                 class_count = {}
                 for div in all_divs:
                     class_name = div.get_attribute("class").strip()
-                    if class_name and len(class_name) == 33:
+                    if class_name and 40 > len(class_name) > 30:
                         class_count[class_name] = class_count.get(class_name, 0) + 1
 
                 self.valid_class_name = next(

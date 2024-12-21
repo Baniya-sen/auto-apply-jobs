@@ -59,6 +59,15 @@ class LinkedInApply:
                     self.driver.get(self.link)
                     break
 
+    def search_jobs_apply(self, title_or_skill_or_company="Python Developer"):
+        """Search with a Job Title, Skill, or a company and apply to all jobs that appears."""
+        search_input = self.driver.find_element(
+            By.XPATH, '//input[@aria-label="Search by title, skill, or company"]'
+        )
+        search_input.send_keys(title_or_skill_or_company)
+        search_input.send_keys(Keys.RETURN)
+        self.easy_apply_to_jobs()
+
     def easy_apply_to_jobs(self) -> None:
         """Continue applying for jobs till target is hit."""
         try:
@@ -92,7 +101,8 @@ class LinkedInApply:
         """Extract all jobs posting from UL element"""
         ul_element = WebDriverWait(self.driver, 5).until(
             ec.presence_of_element_located(
-                (By.XPATH, '//*[@id="main"]/div/div[2]/div[1]/div/ul')
+                (By.XPATH, '//main[@id="main"]//header[contains(@class, "jobs'
+                           '-search-results-list__header")]//following::ul[1]')
             )
         )
         all_li_elements = ul_element.find_elements(By.XPATH, "./li")

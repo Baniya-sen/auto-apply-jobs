@@ -58,6 +58,7 @@ def linkedin_job_apply(driver: webdriver, model: QuestionAnsweringModel, link=No
     if not link:
         linkedin_apply = LinkedInApply(driver=driver, model=model)
         linkedin_apply.easy_apply_to_jobs()
+        # linkedin_apply.search_jobs_apply("Python Developer")
     else:
         linkedin_single_apply = LinkedInApply(driver, model, link)
         linkedin_single_apply.easy_apply_single_job()
